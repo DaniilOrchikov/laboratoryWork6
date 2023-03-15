@@ -1,0 +1,11 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="laba6:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/laba6_jar</output-path>
+    <root id="archive" name="laba6.jar">
+      <element id="module-output" name="laba6" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/logging/log4j/log4j-core/2.19.0/log4j-core-2.19.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/logging/log4j/log4j-api/2.19.0/log4j-api-2.19.0.jar" path-in-jar="/" />
+      <element id="library" level="project" name="apache.logging.log4j.core" />
+    </root>
+  </artifact>
+</component>

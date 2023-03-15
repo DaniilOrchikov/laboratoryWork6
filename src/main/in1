@@ -1,0 +1,20 @@
+info
+remove_by_id 1
+remove_at 0
+remove_first
+remove_lower
+name
+12
+12
+12
+BUDGETARY
+12
+BAR
+street
+1234
+info
+show
+count_greater_than_type USUAL
+filter_by_price 12
+print_field_ascending_type
+execute_script in2
