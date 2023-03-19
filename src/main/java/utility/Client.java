@@ -250,7 +250,7 @@ public class Client {
             ByteBuffer buf = ByteBuffer.wrap(arr);
             sock.write(buf);
             buf.clear();
-            byte[] buffer = new byte[8192];
+            byte[] buffer = new byte[131072];
             ByteBuffer buff = ByteBuffer.wrap(buffer);
             sleep(100);
             sock.read(buff);
@@ -358,7 +358,7 @@ public class Client {
         return true;
     }
 
-    public boolean enteringField(String command) throws IOException {
+    public boolean enteringField(String command){
         while (true) {
             String status = switch (command) {
                 case ("name") -> tb.setName(nextInput().trim());

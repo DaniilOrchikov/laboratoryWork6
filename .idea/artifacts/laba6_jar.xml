@@ -1,10 +1,15 @@
 <component name="ArtifactManager">
-  <artifact type="jar" build-on-make="true" name="laba6:jar">
+  <artifact type="jar" name="laba6:jar">
     <output-path>$PROJECT_DIR$/out/artifacts/laba6_jar</output-path>
     <root id="archive" name="laba6.jar">
       <element id="module-output" name="laba6" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/logging/log4j/log4j-core/2.19.0/log4j-core-2.19.0.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/logging/log4j/log4j-api/2.19.0/log4j-api-2.19.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/openjdk/jol/jol-benchmarks/0.17/jol-benchmarks-0.17.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/openjdk/jmh/jmh-core/1.25.2/jmh-core-1.25.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/net/sf/jopt-simple/jopt-simple/4.6/jopt-simple-4.6.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/commons/commons-math3/3.2/commons-math3-3.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/openjdk/jol/jol-core/0.17/jol-core-0.17.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/apache/logging/log4j/log4j-core/2.19.0/log4j-core-2.19.0.jar" path-in-jar="/" />
       <element id="library" level="project" name="apache.logging.log4j.core" />
     </root>
   </artifact>

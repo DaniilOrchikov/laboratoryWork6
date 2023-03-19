@@ -4,6 +4,10 @@ import ticket.Ticket;
 import ticket.TicketType;
 import ticket.Venue;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
@@ -134,7 +138,7 @@ public class TicketVector {
      * @return возвращает массив со всеми элементами коллекции
      */
     public List<Ticket> getAll() {
-        return tv.stream().toList();
+        return sortBySize(tv.stream().toList());
     }
 
     /**
@@ -161,7 +165,7 @@ public class TicketVector {
      * @return возвращает элементы, значение поля name которых содержит заданную подстроку
      */
     public List<Ticket> filterContainsName(String str) {
-        return tv.stream().filter(t -> t.getName().contains(str)).toList();
+        return sortBySize(tv.stream().filter(t -> t.getName().contains(str)).toList());
     }
 
     /**
@@ -169,7 +173,7 @@ public class TicketVector {
      * @return возвращает элементы, значение поля price которых меньше заданного
      */
     public List<Ticket> filterLessThanPrice(int price) {
-        return tv.stream().filter(t -> t.getPrice() < price).toList();
+        return sortBySize(tv.stream().filter(t -> t.getPrice() < price).toList());
     }
 
     /**
@@ -177,7 +181,7 @@ public class TicketVector {
      * @return возвращает элементы, значение поля price которых равно заданному
      */
     public List<Ticket> filterByPrice(int price) {
-        return tv.stream().filter(t -> t.getPrice() == price).toList();
+        return sortBySize(tv.stream().filter(t -> t.getPrice() == price).toList());
     }
 
     /**
@@ -228,5 +232,24 @@ public class TicketVector {
      */
     public boolean validId(long id) {
         return tv.stream().anyMatch(t -> t.getId() == id);
+    }
+
+    public List<Ticket> sortBySize(List<Ticket> tVec) {
+        return tVec.stream().sorted((t1, t2) -> {
+            int s1, s2;
+            try {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ObjectOutputStream oos = new ObjectOutputStream(baos);
+                oos.writeObject(t1);
+                s1 = baos.size();
+                oos = new ObjectOutputStream(baos);
+                oos.writeObject(t2);
+                oos.close();
+                s2 = baos.size() - s1;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return Long.compare(s1, s2);
+        }).toList();
     }
 }

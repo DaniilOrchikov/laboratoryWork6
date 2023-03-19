@@ -9,9 +9,11 @@ public class Main {
         if (args.length > 0) {
             if (args[0].equals("server")) {
                 CSVReaderAndWriter csvRW = new CSVReaderAndWriter();
+                String s = null;
                 if (args.length > 1)
-                    csvRW.setFile(args[1]);
+                    s = csvRW.setFile(args[1]);
                 utility.Server ex = new utility.Server(csvRW);
+                if (s != null) ex.log(s);
                 ex.createTQFromCSV();
                 ex.acceptingConnections();
             }

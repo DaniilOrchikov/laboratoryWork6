@@ -77,13 +77,15 @@ public class Server {
             }
         }
     }
+    public void log(String str){
+        logger.info(str);
+    }
 
     /**
      * С помощью {@link CSVReaderAndWriter} считывает объекты из csv файла и добавляет в вектор ({@link TicketVector})
      */
     public void createTQFromCSV() {
         long invalidId = 0, invalidTicket = 0;
-        logger.info("Загрузка коллекции из файла " + csvRW.getFileName() + ".");
         while (csvRW.hasNext()) {
             try {
                 if (!tv.add(csvRW.nextTicket())) invalidId++;
@@ -96,7 +98,7 @@ public class Server {
             logger.warn("Объектов не добавлено по причине неоригинального id - " + invalidId + ".");
         if (invalidTicket > 0)
             logger.warn("Объектов не добавлено по причине несоответствия структуре - " + invalidTicket + ".");
-        if (invalidTicket == 0 && invalidId == 0)
+        if (!csvRW.getFileName().equals("") && invalidTicket == 0 && invalidId == 0)
             logger.warn("Загружено без ошибок.");
     }
 

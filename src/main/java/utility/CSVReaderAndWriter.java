@@ -34,22 +34,23 @@ public class CSVReaderAndWriter {
      *
      * @param fileName имя csv файла, в который будут записываться, и из которого будут читаться данные
      */
-    public void setFile(String fileName) {
+    public String setFile(String fileName) {
         this.fileName = fileName;
         try {
             File f = new File(this.fileName);
             if (!f.exists()) {
-                System.out.println("Неверное имя файла");
+                 return  "Неверное имя файла";
             } else if (f.isDirectory()) {
-                System.out.println("Невозможно исполнить директорию");
+                return  "Невозможно исполнить директорию";
             } else if (!f.canRead()) {
-                System.out.println("Недостаточно прав для чтения из файла");
+                return  "Недостаточно прав для чтения из файла";
             } else {
                 scanner = new Scanner(Paths.get(fileName));
                 scanner.useDelimiter("\n");
+                return "Загрузка коллекции из файла " + getFileName() + ".";
             }
         } catch (IOException e) {
-            System.out.println("Не удалось настроить поток чтения из файла");
+            return  "Не удалось настроить поток чтения из файла";
         }
     }
 
