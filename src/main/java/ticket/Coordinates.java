@@ -9,9 +9,12 @@ import java.io.Serializable;
  */
 public class Coordinates implements Serializable {
     /**
-     * Поля с координатами x и y
+     * Поле координаты x
      */
     private final int x;
+    /**
+     * Поле координаты y
+     */
     private final int y;
 
     public Coordinates(int x, int y) {

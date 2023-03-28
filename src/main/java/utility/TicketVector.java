@@ -7,7 +7,6 @@ import ticket.Venue;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
@@ -234,8 +233,14 @@ public class TicketVector {
         return tv.stream().anyMatch(t -> t.getId() == id);
     }
 
-    public List<Ticket> sortBySize(List<Ticket> tVec) {
-        return tVec.stream().sorted((t1, t2) -> {
+    /**
+     * Сортирует передаваемую коллекцию по возрастанию размера объекта
+     * @param arr передаваемая коллекция
+     * @return возвращает отсортированную последовательность
+     */
+
+    public List<Ticket> sortBySize(List<Ticket> arr) {
+        return arr.stream().sorted((t1, t2) -> {
             int s1, s2;
             try {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();

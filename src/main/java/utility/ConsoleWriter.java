@@ -1,6 +1,12 @@
 package utility;
 
+/**
+ * Класс, используемый для печати в консоль
+ */
 public class ConsoleWriter {
+    /**
+     * Если 0 - происходит ввод из консоли. Иначе - ввод из файла
+     */
     private int inputStatus = 0;
 
     public void setInputStatus(int inputStatus) {

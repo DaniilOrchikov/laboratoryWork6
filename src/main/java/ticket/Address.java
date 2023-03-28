@@ -12,12 +12,12 @@ public class Address implements Serializable {
      * Поле улица.
      * Не может быть пустой, Поле не может быть null
      */
-    private String street;
+    private final String street;
     /**
      * Поле индекс.
      * Не может быть null
      */
-    private String zipCode;
+    private final String zipCode;
     public Address(String street, String zipCode){
         this.street = street;
         this.zipCode = zipCode;

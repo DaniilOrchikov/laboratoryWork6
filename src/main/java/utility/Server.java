@@ -12,12 +12,15 @@ import java.net.SocketTimeoutException;
 import java.util.InputMismatchException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Класс исполняющий команды, которые требуют обратиться к коллекции ({@link TicketVector}), управляющий работой {@link Client} и {@link CSVReaderAndWriter}.
- * Поля - <b>exit</b>, <b>tv</b>, <b>cr</b> и <b>csvRW</b>
+ * Класс серверного приложения.
+ * <br>Принимает команду от клиентского приложения.
+ * <br>Исполняет ее с помощью класса {@link TicketVector}
+ * <br>Отправляет ответ обратно клиенту
  */
 public class Server {
     /**
@@ -28,7 +31,13 @@ public class Server {
      * Поле {@link CSVReaderAndWriter}
      */
     private final CSVReaderAndWriter csvRW;
+    /**
+     * Поле {@link ServerSocket}, который создает сокеты для общения с клиентом
+     */
     private final ServerSocket serv;
+    /**
+     * Поле логгера {@link Logger}
+     */
     private static final Logger logger = LogManager.getLogger(Server.class);
 
 
@@ -38,6 +47,9 @@ public class Server {
         serv.setSoTimeout(200);
     }
 
+    /**
+     * Запуск сервера и прием подключений клиентов с помощью класса {@link ServerSocket}. Можно ввести с консоли команды save - для сохранения коллекции в файл ({@link CSVReaderAndWriter#fileName}) и exit - для сохранения коллекции и закрытия сервера
+     */
     public void acceptingConnections() throws IOException, ClassNotFoundException {
         logger.info("Сервер запущен.");
         while (true) {
@@ -77,8 +89,15 @@ public class Server {
             }
         }
     }
-    public void log(String str){
+
+    /**
+     * Вывод логов с помощью {@link Server#logger}
+     *
+     * @param str
+     */
+    public void log(String str) {
         logger.info(str);
+
     }
 
     /**
@@ -106,7 +125,8 @@ public class Server {
      * Исполнение команд не требующих создания объекта класса {@link Ticket}.<br>
      * Команды - <b>show</b>, <b>clear</b>, <b>remove_first</b>, <b>remove_at</b>, <b>remove_by_id</b>, <b>min_by_venue</b>, <b>filter_contains_name</b>, <b>filter_less_than_price</b>, <b>filter_by_price</b>, <b>save</b>, <b>info</b>, <b>count_greater_than_type</b>, <b>print_field_ascending_type</b>
      *
-     * @param command массив строк
+     * @param command объект класса {@link Command}
+     * @return возвращает объект класса {@link Answer} для отправки клиенту
      */
     public Answer commandExecution(Command command) {
         switch (command.getCommand()[0]) {
@@ -167,7 +187,8 @@ public class Server {
      * Команды - <b>add</b>, <b>update</b>, <b>add_if_max</b>, <b>add_if_min</b>, <b>remove_lower</b>.<br>
      * Передаются параметры нужные для создания объекта класса {@link Ticket}({@link Ticket#Ticket})
      *
-     * @param command массив строк
+     * @param command объект класса {@link Command}
+     * @return возвращает объект класса {@link Answer} для отправки клиенту
      */
     public Answer commandExecutionWithElement(Command command) {
         switch (command.getCommand()[0]) {

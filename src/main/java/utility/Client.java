@@ -1,5 +1,6 @@
 package utility;
 
+import ticket.Ticket;
 import ticket.TicketBuilder;
 import ticket.TicketType;
 import ticket.VenueType;
@@ -19,7 +20,10 @@ import java.util.Stack;
 import static java.lang.Thread.sleep;
 
 /**
- * Класс для чтения данных из консоли или файла и парсинг этих данных в команды. Также для вывода данных на стандартный поток вывода. Поля <b>in</b>, <b>scannerStack</b>, <b>fileNamesStack</b>, <b>ex</b>
+ * Класс клиентского приложения.
+ * <br>Читает команды из консоли с помощью класса {@link ConsoleWriter}.
+ * <br>Отправляет полученные команды и её аргументы на сервер.
+ * <br>Обрабатывает ответы от сервера (вывод результата исполнения команды в консоль).
  */
 public class Client {
     /**
@@ -41,9 +45,12 @@ public class Client {
      */
     private final Stack<String> fileNamesStack = new Stack<>();
     /**
-     * Поле объекта, который пишет в консоль
+     * Поле писателя в консоль
      */
     private final ConsoleWriter cw;
+    /**
+     * Поле создателя объектов типа {@link Ticket}
+     */
     private final TicketBuilder tb = new TicketBuilder();
 
     public Client(ConsoleWriter cw) throws IOException {
@@ -51,7 +58,7 @@ public class Client {
     }
 
     /**
-     * Цикл считывания команд с помощью {@link Client}. Цикл завершается, если {@link Server#exit} == true или если введен символ конца ввода
+     * Цикл считывания и обрабатывания команд.
      */
     public void readingCycle() throws IOException {
         while (true) {
@@ -84,12 +91,15 @@ public class Client {
      *
      * @return возвращает массив строк
      */
-    public String[] read() throws IOException {
+    public String[] read(){
         checkingScanner();
         cw.print(">>");
         return nextInput().split(" ");
     }
 
+    /**
+     * Прерывает работу приложения
+     */
     public void exit() {
         System.exit(0);
     }
@@ -116,11 +126,10 @@ public class Client {
 
     /**
      * Выборка команды.
-     * Если команда не требует обращения к коллекции - исполнение команды.
-     * Если команда не требует ввод объекта - команда передается Исполнителю {@link Server}({@link Server#commandExecution}).
-     * Если команда требует ввода объекта - просит ввести поля и создает объект с помощью {@link TicketBuilder}
-     * Далее передает данные и команду {@link Server}({@link Server#commandExecutionWithElement})
-     *
+     * <br>Если команда не требует обращения к коллекции - исполнение команды.
+     * <br>Если команда не требует ввод объекта - команда передается на сервер {@link Server}({@link Server#commandExecution})
+     * <br>Если команда требует ввода объекта - просит ввести поля и создает объект с помощью {@link TicketBuilder}. Далее передает данные и команду {@link Server}({@link Server#commandExecutionWithElement})
+     * <br>Команды передаются с помощью класса {@link Command}
      * @param command массив строк (команда, которую необходимо исполнить и, при необходимости, параметры)
      */
     public void nextCommand(String[] command) throws IOException {
@@ -231,6 +240,12 @@ public class Client {
         }
     }
 
+    /**
+     * Подключение к серверу, передача ему команды и прием от него ответа.
+     * <br>Подключение происходит с помощью {@link SocketChannel} в неблокирующем режиме
+     * @param command исполняемая команда
+     * @param mode 1, если команда предполагает создание объекта, 0 - если нет
+     */
     private void communicatingWithServer(String[] command, byte mode) throws IOException, InterruptedException, ClassNotFoundException {
         try {
             int port = 5452;
@@ -267,7 +282,7 @@ public class Client {
     }
 
     /**
-     * Проверка аргументов команд с аргументами на соответствие требованиям типов данных, валидности id и т.д.
+     * Проверка аргументов команд с аргументами на соответствие требованиям типов данных и т.д.
      *
      * @param command команда
      * @return возвращает true, если введенный аргумент соответствует требованиям, false - если не соответствует
@@ -358,6 +373,11 @@ public class Client {
         return true;
     }
 
+    /**
+     * Ввод очередного поля создаваемого объекта в {@link TicketBuilder}. Определяет тип команды и просит ее ввести, пока не придет ответ "OK" от создателя.
+     * @param command команда
+     * @return возвращает false, если поле введено некорректно и происходит ввод из файла {@link ConsoleWriter#inputStatus} == 1
+     */
     public boolean enteringField(String command){
         while (true) {
             String status = switch (command) {

@@ -4,6 +4,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
+/**
+ * Класс, который поэтапно создает объект класса {@link Ticket}. При этом каждый метод возвращает строку "OK" если поле создано корректно и сообщение об ошибке, в противном случае
+ */
 public class TicketBuilder {
     /*
      * Не может быть null, строка не может быть пустой
@@ -130,12 +133,15 @@ public class TicketBuilder {
     public String setCreationDate(String strDate) {
         try {
             this.creationDate = LocalDateTime.parse(strDate, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        }catch (DateTimeParseException e){
+        } catch (DateTimeParseException e) {
             return "Неверный формат даты";
         }
         return "OK";
     }
 
+    /**
+     * Сбрасывает все поля в null
+     */
     public void clear() {
         name = null;
         coordinates = null;
@@ -150,6 +156,9 @@ public class TicketBuilder {
         creationDate = null;
     }
 
+    /**
+     * Проверяет, что все поля заполнены
+     */
     public boolean readyTCreate() {
         return (name != null &&
                 coordinates != null &&
@@ -171,6 +180,7 @@ public class TicketBuilder {
     }
 
     /**
+     * @param id явное указание id
      * @return возвращает объект класса {@link Ticket}
      */
     public Ticket getTicket(Long id) {
@@ -192,7 +202,6 @@ public class TicketBuilder {
         }
         return false;
     }
-
 
     /**
      * Проверяет, что строка соответствует одному из значений {@link TicketType}
