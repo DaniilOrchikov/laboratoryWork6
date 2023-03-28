@@ -9,9 +9,11 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.Arrays;
 import java.util.InputMismatchException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -58,11 +60,13 @@ public class Server {
                 logger.info("Установлено подключение. Адрес - " + sock.getRemoteSocketAddress() + ".");
                 ObjectInputStream ois = new ObjectInputStream(sock.getInputStream());
                 Command command = (Command) ois.readObject();
+                logger.info("Получена команда " + String.join(" ", command.getCommand()) + ".");
                 Answer answer;
                 if (command.hasTicket) answer = commandExecutionWithElement(command);
                 else answer = commandExecution(command);
                 ObjectOutputStream oos = new ObjectOutputStream(sock.getOutputStream());
                 oos.writeObject(answer);
+                logger.info("Отправлен ответ.");
                 logger.info(sock.getRemoteSocketAddress() + " отключился.");
             } catch (SocketTimeoutException e) {
                 if (System.in.available() > 0) {
@@ -92,8 +96,6 @@ public class Server {
 
     /**
      * Вывод логов с помощью {@link Server#logger}
-     *
-     * @param str
      */
     public void log(String str) {
         logger.info(str);
