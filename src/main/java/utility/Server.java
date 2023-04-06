@@ -9,11 +9,9 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
-import java.util.Arrays;
 import java.util.InputMismatchException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
-import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -50,6 +48,26 @@ public class Server {
     }
 
     /**
+     * Чтение команды клиента
+     * @return возвращает полученную команду
+     */
+    private Command readRequest(Socket sock) throws IOException, ClassNotFoundException {
+        ObjectInputStream ois = new ObjectInputStream(sock.getInputStream());
+        return (Command) ois.readObject();
+    }
+
+    /**
+     * Ответ клиенту
+     */
+    private void response(Command command, Socket sock) throws IOException {
+        Answer answer;
+        if (command.hasTicket) answer = commandExecutionWithElement(command);
+        else answer = commandExecution(command);
+        ObjectOutputStream oos = new ObjectOutputStream(sock.getOutputStream());
+        oos.writeObject(answer);
+    }
+
+    /**
      * Запуск сервера и прием подключений клиентов с помощью класса {@link ServerSocket}. Можно ввести с консоли команды save - для сохранения коллекции в файл ({@link CSVReaderAndWriter#fileName}) и exit - для сохранения коллекции и закрытия сервера
      */
     public void acceptingConnections() throws IOException, ClassNotFoundException {
@@ -58,14 +76,9 @@ public class Server {
             try {
                 Socket sock = serv.accept();
                 logger.info("Установлено подключение. Адрес - " + sock.getRemoteSocketAddress() + ".");
-                ObjectInputStream ois = new ObjectInputStream(sock.getInputStream());
-                Command command = (Command) ois.readObject();
+                Command command = readRequest(sock);
                 logger.info("Получена команда " + String.join(" ", command.getCommand()) + ".");
-                Answer answer;
-                if (command.hasTicket) answer = commandExecutionWithElement(command);
-                else answer = commandExecution(command);
-                ObjectOutputStream oos = new ObjectOutputStream(sock.getOutputStream());
-                oos.writeObject(answer);
+                response(command, sock);
                 logger.info("Отправлен ответ.");
                 logger.info(sock.getRemoteSocketAddress() + " отключился.");
             } catch (SocketTimeoutException e) {
@@ -134,7 +147,7 @@ public class Server {
         switch (command.getCommand()[0]) {
             case ("show"):
                 StringBuilder str = new StringBuilder();
-                tv.getAll().stream().forEach(t -> str.append(t).append("\n"));
+                tv.getAll().forEach(t -> str.append(t).append("\n"));
                 return new Answer(str.toString(), false);
             case ("clear"):
                 tv.clear();
