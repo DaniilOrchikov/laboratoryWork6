@@ -91,7 +91,7 @@ public class Client {
      *
      * @return возвращает массив строк
      */
-    public String[] read(){
+    public String[] read() {
         checkingScanner();
         cw.print(">>");
         return nextInput().split(" ");
@@ -109,7 +109,7 @@ public class Client {
      *
      * @return возвращает строку
      */
-    private String nextInput(){
+    private String nextInput() {
         String str = "";
         try {
             str = in.nextLine().trim();
@@ -130,6 +130,7 @@ public class Client {
      * <br>Если команда не требует ввод объекта - команда передается на сервер {@link Server}({@link Server#commandExecution})
      * <br>Если команда требует ввода объекта - просит ввести поля и создает объект с помощью {@link TicketBuilder}. Далее передает данные и команду {@link Server}({@link Server#commandExecutionWithElement})
      * <br>Команды передаются с помощью класса {@link Command}
+     *
      * @param command массив строк (команда, которую необходимо исполнить и, при необходимости, параметры)
      */
     public void nextCommand(String[] command) throws IOException {
@@ -243,21 +244,23 @@ public class Client {
     /**
      * Подключение к серверу, передача ему команды и прием от него ответа.
      * <br>Подключение происходит с помощью {@link SocketChannel} в неблокирующем режиме
+     *
      * @param command исполняемая команда
-     * @param mode 1, если команда предполагает создание объекта, 0 - если нет
+     * @param mode    1, если команда предполагает создание объекта, 0 - если нет
      */
     private void communicatingWithServer(String[] command, byte mode) throws IOException, InterruptedException, ClassNotFoundException {
         try {
-            int port = 5452;
+            int port = 5454;
             SocketChannel sock = SocketChannel.open(new InetSocketAddress(port));
             sock.configureBlocking(false);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ObjectOutputStream oos = new ObjectOutputStream(baos);
             if (mode == 1) {
-                if (command[0].equals("update"))
-                    oos.writeObject(new Command(command, tb.getTicket(Long.parseLong(command[1]))));
-                else oos.writeObject(new Command(command, tb.getTicket()));
-            }else{
+                if (command[0].equals("update")) {
+                    tb.setId(Long.parseLong(command[1]));
+                    oos.writeObject(new Command(command, tb));
+                } else oos.writeObject(new Command(command, tb));
+            } else {
                 oos.writeObject(new Command(command));
             }
             oos.close();
@@ -267,10 +270,24 @@ public class Client {
             buf.clear();
             byte[] buffer = new byte[131072];
             ByteBuffer buff = ByteBuffer.wrap(buffer);
-            sleep(100);
-            sock.read(buff);
-            ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(buff.array()));
-            Answer answer = (Answer) ois.readObject();
+//            sleep(300);
+            ObjectInputStream ois;
+            Answer answer;
+            long startTime = System.currentTimeMillis();
+            while (true) {
+                if (System.currentTimeMillis() - startTime > 2000) {
+                    cw.printIgnoringPrintStatus("Не удалось получить ответ от сервера");
+                    return;
+                }
+                sleep(30);
+                try {
+                    sock.read(buff);
+                    ois = new ObjectInputStream(new ByteArrayInputStream(buff.array()));
+                    answer = (Answer) ois.readObject();
+                    break;
+                } catch (StreamCorruptedException ignored) {
+                }
+            }
             String answerText = answer.text();
             if (answer.systemInformation()) cw.println(answerText);
             else cw.printIgnoringPrintStatus(answerText);
@@ -375,10 +392,11 @@ public class Client {
 
     /**
      * Ввод очередного поля создаваемого объекта в {@link TicketBuilder}. Определяет тип команды и просит ее ввести, пока не придет ответ "OK" от создателя.
+     *
      * @param command команда
      * @return возвращает false, если поле введено некорректно и происходит ввод из файла {@link ConsoleWriter#inputStatus} == 1
      */
-    public boolean enteringField(String command){
+    public boolean enteringField(String command) {
         while (true) {
             String status = switch (command) {
                 case ("name") -> tb.setName(nextInput().trim());

@@ -65,7 +65,7 @@ public class CSVReaderAndWriter {
     /**
      * @return возвращает следующий объект из csv фала
      */
-    public Ticket nextTicket() {
+    public TicketBuilder nextTicket() {
         return parseCSVLine(scanner.next());
     }
 
@@ -73,7 +73,7 @@ public class CSVReaderAndWriter {
      * @param line строка, из которой необходимо создать объект
      * @return возвращает объект класса {@link Ticket}
      */
-    private Ticket parseCSVLine(String line) {
+    private TicketBuilder parseCSVLine(String line) {
         Scanner scanner = new Scanner(line.trim());
         scanner.useDelimiter(separator);
         tb.clear();
@@ -86,14 +86,14 @@ public class CSVReaderAndWriter {
         if (!tb.setName(scanner.next()).equals("OK"))throw new InputMismatchException();
         if (!tb.setX(scanner.next()).equals("OK"))throw new InputMismatchException();
         if (!tb.setY(scanner.next()).equals("OK"))throw new InputMismatchException();
-        if (!tb.setCreationDate(scanner.next()).equals("OK"))throw new InputMismatchException();
         if (!tb.setPrice(scanner.next()).equals("OK"))throw new InputMismatchException();
         if (!tb.setType(scanner.next()).equals("OK"))throw new InputMismatchException();
         if (!tb.setVenueCapacity(scanner.next()).equals("OK"))throw new InputMismatchException();
         if (!tb.setVenueType(scanner.next()).equals("OK"))throw new InputMismatchException();
         if (!tb.setAddressStreet(scanner.next()).equals("OK"))throw new InputMismatchException();
         if (!tb.setAddressZipCode(scanner.next()).equals("OK"))throw new InputMismatchException();
-        return tb.getTicket(id);
+        tb.setId(id);
+        return tb;
     }
 
     /**

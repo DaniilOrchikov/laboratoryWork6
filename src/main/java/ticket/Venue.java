@@ -75,4 +75,16 @@ public class Venue implements Comparable<Venue>, Serializable {
     public void setId(Long id){
         this.id = id;
     }
+
+    public Long getCapacity() {
+        return capacity;
+    }
+
+    public VenueType getType() {
+        return type;
+    }
+
+    public Address getAddress() {
+        return address;
+    }
 }

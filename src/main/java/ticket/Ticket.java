@@ -116,4 +116,14 @@ public class Ticket implements Comparable<Ticket>, Serializable {
     public TicketType getType() {
         return type;
     }
+    public int getX(){
+        return coordinates.getX();
+    }
+    public int getY(){
+        return coordinates.getY();
+    }
+
+    public Coordinates getCoordinates() {
+        return coordinates;
+    }
 }

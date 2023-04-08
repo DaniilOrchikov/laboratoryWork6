@@ -1,23 +1,21 @@
 import utility.CSVReaderAndWriter;
 import utility.Client;
 import utility.ConsoleWriter;
+import utility.SQLTickets;
 
 import java.io.IOException;
+import java.sql.*;
 
 public class Main {
     /**
      * Если при запуске с консоли указать ключ server, то запустится серверное приложение. Если при этом указать файл, данные из него будут загружены в коллекцию
      */
-    public static void main(String[] args) throws IOException, ClassNotFoundException {
+    public static void main(String[] args) throws IOException, ClassNotFoundException, SQLException {
         if (args.length > 0) {
             if (args[0].equals("server")) {
-                CSVReaderAndWriter csvRW = new CSVReaderAndWriter();
-                String s = null;
-                if (args.length > 1)
-                    s = csvRW.setFile(args[1]);
-                utility.Server ex = new utility.Server(csvRW);
-                if (s != null) ex.log(s);
-                ex.createTQFromCSV();
+                SQLTickets sqlt = new SQLTickets();
+                utility.Server ex = new utility.Server(sqlt);
+                ex.createTQ();
                 ex.acceptingConnections();
             }
         } else {

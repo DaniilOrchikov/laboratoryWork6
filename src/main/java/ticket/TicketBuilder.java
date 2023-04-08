@@ -1,5 +1,9 @@
 package ticket;
 
+import utility.TicketVector;
+
+import javax.swing.plaf.PanelUI;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -7,7 +11,8 @@ import java.time.format.DateTimeParseException;
 /**
  * Класс, который поэтапно создает объект класса {@link Ticket}. При этом каждый метод возвращает строку "OK" если поле создано корректно и сообщение об ошибке, в противном случае
  */
-public class TicketBuilder {
+public class TicketBuilder implements Serializable, Comparable<TicketBuilder> {
+    private Long id = null;
     /*
      * Не может быть null, строка не может быть пустой
      */
@@ -44,11 +49,30 @@ public class TicketBuilder {
     private Integer y = null;
     private LocalDateTime creationDate = null;
 
+    public TicketBuilder(){
+
+    }
+    public TicketBuilder(Ticket t){
+        this.name = t.getName();
+        this.coordinates = t.getCoordinates();
+        this.price = t.getPrice();
+        this.type = t.getType();
+        this.venueCapacity = t.getVenue().getCapacity();
+        this.venueType = t.getVenue().getType();
+        this.addressStreet = t.getVenue().getAddress().getStreet();
+        this.addressZipCode = t.getVenue().getAddress().getZipCode();
+        this.x = coordinates.getX();
+        this.y = coordinates.getY();
+    }
 
     public String setName(String name) {
         if (name.equals("")) return "Строка не может быть пустой";
         this.name = name;
         return "OK";
+    }
+
+    public String getName() {
+        return name;
     }
 
     public String setX(String strX) {
@@ -63,6 +87,10 @@ public class TicketBuilder {
         return "OK";
     }
 
+    public Integer getX() {
+        return x;
+    }
+
     public String setY(String strY) {
         int y;
         if (strY.equals("")) return "Строка не может быть пустой";
@@ -75,6 +103,9 @@ public class TicketBuilder {
         return "OK";
     }
 
+    public Integer getY() {
+        return y;
+    }
 
     public String setPrice(String strPrice) {
         Integer price;
@@ -89,10 +120,18 @@ public class TicketBuilder {
         return "OK";
     }
 
+    public Integer getPrice() {
+        return price;
+    }
+
     public String setAddressStreet(String addressStreet) {
         if (addressStreet.equals("")) return "Строка не может быть пустой";
         this.addressStreet = addressStreet;
         return "OK";
+    }
+
+    public String getAddressStreet() {
+        return addressStreet;
     }
 
     public String setAddressZipCode(String addressZipCode) {
@@ -101,12 +140,20 @@ public class TicketBuilder {
         return "OK";
     }
 
+    public String getAddressZipCode() {
+        return addressZipCode;
+    }
+
     public String setType(String strType) {
         if (!validTicketType(strType)) {
             return "Неверный тип";
         }
         this.type = TicketType.valueOf(strType);
         return "OK";
+    }
+
+    public TicketType getType() {
+        return type;
     }
 
     public String setVenueCapacity(String strVenueCapacity) {
@@ -122,6 +169,10 @@ public class TicketBuilder {
         return "OK";
     }
 
+    public Long getVenueCapacity() {
+        return venueCapacity;
+    }
+
     public String setVenueType(String strVenueType) {
         if (!validVenueType(strVenueType)) {
             return "Неверный тип";
@@ -130,19 +181,22 @@ public class TicketBuilder {
         return "OK";
     }
 
-    public String setCreationDate(String strDate) {
-        try {
-            this.creationDate = LocalDateTime.parse(strDate, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        } catch (DateTimeParseException e) {
-            return "Неверный формат даты";
-        }
-        return "OK";
+    public VenueType getVenueType() {
+        return venueType;
+    }
+
+    public void setCreationDate(LocalDateTime dt) {
+        this.creationDate = dt;
+    }
+    public LocalDateTime getCreationDate(){
+        return creationDate;
     }
 
     /**
      * Сбрасывает все поля в null
      */
     public void clear() {
+        id = null;
         name = null;
         coordinates = null;
         price = null;
@@ -176,17 +230,16 @@ public class TicketBuilder {
      * @return возвращает объект класса {@link Ticket}
      */
     public Ticket getTicket() {
-        return new Ticket(name, new Coordinates(x, y), this.creationDate == null ? LocalDateTime.now() : creationDate, price, type, new Venue(name, venueCapacity, venueType, new Address(addressStreet, addressZipCode)));
-    }
-
-    /**
-     * @param id явное указание id
-     * @return возвращает объект класса {@link Ticket}
-     */
-    public Ticket getTicket(Long id) {
         return new Ticket(id, name, new Coordinates(x, y), this.creationDate == null ? LocalDateTime.now() : creationDate, price, type, new Venue(id, name, venueCapacity, venueType, new Address(addressStreet, addressZipCode)));
     }
 
+    public void setId(Long id){
+        this.id = id;
+    }
+
+    public Long getId() {
+        return id;
+    }
 
     /**
      * Проверяет, что строка соответствует одному из значений {@link VenueType}
@@ -216,5 +269,23 @@ public class TicketBuilder {
             }
         }
         return false;
+    }
+
+    public boolean hasId(){
+        return id != null;
+    }
+    /**
+     * Сравнивает объект с объектом типа ticket.Ticket {@link Ticket}
+     * Сравнение происходит по полям {@link Ticket#type}({@link TicketType}), {@link Ticket#venue}({@link Venue}) и {@link Ticket#price}
+     *
+     * @param tb объект типа {@link TicketBuilder}, с которым производится сравнение
+     */
+    @Override
+    public int compareTo(TicketBuilder tb) {
+        int v = this.type.compareTo(tb.type) * -5;
+        v += this.venueCapacity.compareTo(tb.venueCapacity);
+        if (this.price > tb.price) v += 2;
+        else if (this.price < tb.price) v--;
+        return v;
     }
 }

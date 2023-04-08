@@ -33,4 +33,12 @@ public class Coordinates implements Serializable {
     public String toCSVFormat(String separator){
         return x + separator + y;
     }
+
+    public int getX() {
+        return x;
+    }
+
+    public int getY() {
+        return y;
+    }
 }

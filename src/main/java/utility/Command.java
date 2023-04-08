@@ -1,6 +1,7 @@
 package utility;
 
 import ticket.Ticket;
+import ticket.TicketBuilder;
 
 import java.io.Serializable;
 
@@ -11,7 +12,7 @@ public class Command implements Serializable {
     /**
      * Поле с объектом типа {@link Ticket}.
      */
-    private Ticket t;
+    private TicketBuilder tb;
     /**
      * Поле с командой.
      */
@@ -21,8 +22,8 @@ public class Command implements Serializable {
      */
     public final boolean hasTicket;
 
-    public Command(String[] command, Ticket t) {
-        this.t = t;
+    public Command(String[] command, TicketBuilder tb) {
+        this.tb = tb;
         this.command = command;
         this.hasTicket = true;
     }
@@ -32,8 +33,8 @@ public class Command implements Serializable {
         this.hasTicket = false;
     }
 
-    public Ticket getTicket() {
-        return t;
+    public TicketBuilder getTicketBuilder() {
+        return tb;
     }
 
     public String[] getCommand() {

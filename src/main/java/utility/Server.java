@@ -9,6 +9,7 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.sql.SQLException;
 import java.util.InputMismatchException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
@@ -26,11 +27,7 @@ public class Server {
     /**
      * Поле {@link TicketVector}
      */
-    private final TicketVector tv = new TicketVector();
-    /**
-     * Поле {@link CSVReaderAndWriter}
-     */
-    private final CSVReaderAndWriter csvRW;
+    private final SQLTickets sqlt;
     /**
      * Поле {@link ServerSocket}, который создает сокеты для общения с клиентом
      */
@@ -41,14 +38,15 @@ public class Server {
     private static final Logger logger = LogManager.getLogger(Server.class);
 
 
-    public Server(CSVReaderAndWriter csvRW) throws IOException {
-        this.csvRW = csvRW;
-        serv = new ServerSocket(5452);
+    public Server(SQLTickets sqlt) throws IOException, SQLException {
+        this.sqlt = sqlt;
+        serv = new ServerSocket(5454);
         serv.setSoTimeout(200);
     }
 
     /**
      * Чтение команды клиента
+     *
      * @return возвращает полученную команду
      */
     private Command readRequest(Socket sock) throws IOException, ClassNotFoundException {
@@ -59,7 +57,7 @@ public class Server {
     /**
      * Ответ клиенту
      */
-    private void response(Command command, Socket sock) throws IOException {
+    private void response(Command command, Socket sock) throws IOException, SQLException {
         Answer answer;
         if (command.hasTicket) answer = commandExecutionWithElement(command);
         else answer = commandExecution(command);
@@ -67,10 +65,7 @@ public class Server {
         oos.writeObject(answer);
     }
 
-    /**
-     * Запуск сервера и прием подключений клиентов с помощью класса {@link ServerSocket}. Можно ввести с консоли команды save - для сохранения коллекции в файл ({@link CSVReaderAndWriter#fileName}) и exit - для сохранения коллекции и закрытия сервера
-     */
-    public void acceptingConnections() throws IOException, ClassNotFoundException {
+    public void acceptingConnections() throws IOException, ClassNotFoundException, SQLException {
         logger.info("Сервер запущен.");
         while (true) {
             try {
@@ -87,18 +82,20 @@ public class Server {
                         Scanner in = new Scanner(System.in);
                         switch (in.next()) {
                             case ("save"):
-                                if (csvRW.writeToCSV(tv.getAll())) logger.info("Сохранение прошло успешно.");
-                                else logger.warn("Не удалось сохранить данные в связи с ошибкой записи в файл.");
+//                                if (csvRW.writeToCSV(sqlt.getAll())) logger.info("Сохранение прошло успешно.");
+//                                else logger.warn("Не удалось сохранить данные в связи с ошибкой записи в файл.");
                                 break;
                             case ("exit"):
-                                if (csvRW.writeToCSV(tv.getAll())) logger.info("Сохранение прошло успешно.");
-                                else logger.warn("Не удалось сохранить данные в связи с ошибкой записи в файл.");
+//                                if (csvRW.writeToCSV(sqlt.getAll())) logger.info("Сохранение прошло успешно.");
+//                                else logger.warn("Не удалось сохранить данные в связи с ошибкой записи в файл.");
                                 logger.info("Сервер выключен.");
+                                sqlt.exit();
                                 serv.close();
                                 System.exit(0);
                         }
                     } catch (NoSuchElementException err) {
-                        logger.warn("Экстренное выключение сервера без сохранения.");
+                        logger.warn("Экстренное выключение сервера.");
+                        sqlt.exit();
                         serv.close();
                         System.exit(0);
                     }
@@ -108,32 +105,12 @@ public class Server {
     }
 
     /**
-     * Вывод логов с помощью {@link Server#logger}
-     */
-    public void log(String str) {
-        logger.info(str);
-
-    }
-
-    /**
      * С помощью {@link CSVReaderAndWriter} считывает объекты из csv файла и добавляет в вектор ({@link TicketVector})
      */
-    public void createTQFromCSV() {
-        long invalidId = 0, invalidTicket = 0;
-        while (csvRW.hasNext()) {
-            try {
-                if (!tv.add(csvRW.nextTicket())) invalidId++;
-            } catch (InputMismatchException e) {
-                invalidTicket++;
-            } catch (NoSuchElementException ignored) {
-            }
-        }
-        if (invalidId > 0)
-            logger.warn("Объектов не добавлено по причине неоригинального id - " + invalidId + ".");
-        if (invalidTicket > 0)
-            logger.warn("Объектов не добавлено по причине несоответствия структуре - " + invalidTicket + ".");
-        if (!csvRW.getFileName().equals("") && invalidTicket == 0 && invalidId == 0)
-            logger.warn("Загружено без ошибок.");
+    public void createTQ() throws SQLException {
+        String resp = sqlt.loadTickets();
+        if (resp.equals("OK")) logger.info("Загрузка коллекции из базы данных прошла успешно");
+        else logger.warn(resp);
     }
 
     /**
@@ -143,56 +120,71 @@ public class Server {
      * @param command объект класса {@link Command}
      * @return возвращает объект класса {@link Answer} для отправки клиенту
      */
-    public Answer commandExecution(Command command) {
+    public Answer commandExecution(Command command) throws SQLException {
         switch (command.getCommand()[0]) {
             case ("show"):
                 StringBuilder str = new StringBuilder();
-                tv.getAll().forEach(t -> str.append(t).append("\n"));
+                sqlt.getAll().forEach(t -> str.append(t).append("\n"));
                 return new Answer(str.toString(), false);
             case ("clear"):
-                tv.clear();
-                return new Answer("Коллекция очищена", true);
+                String[] resp = sqlt.clear().split("/");
+                if (resp[0].equals("OK")) return new Answer("Коллекция очищена", true);
+                else {
+                    logger.warn(resp[1]);
+                    return new Answer(resp[0], false);
+                }
             case ("remove_first"):
-                if (tv.remove(0))
+                resp = sqlt.remove(0).split("/");
+                if (resp[0].equals("OK"))
                     return new Answer("Первый элемент удален", true);
-                else
-                    return new Answer("Массив пустой", false);
+                else {
+                    logger.warn(resp[1]);
+                    return new Answer(resp[0], false);
+                }
             case ("remove_at"):
-                if (tv.remove(Integer.parseInt(command.getCommand()[1])))
+                resp = sqlt.remove(Integer.parseInt(command.getCommand()[1])).split("/");
+                if (resp[0].equals("OK"))
                     return new Answer("Элемент под индексом " + command.getCommand()[1] + " удален", true);
-                else
-                    return new Answer("Индекс выходит за границы массива", false);
+                else {
+                    logger.warn(resp[1]);
+                    return new Answer(resp[0], false);
+                }
             case ("remove_by_id"):
                 long id = Long.parseLong(command.getCommand()[1]);
-                if (!tv.validId(id))
+                if (!sqlt.validId(id))
                     return new Answer("Неверный id", false);
-                tv.removeById(id);
-                return new Answer(String.format("Элемент с id %s удален", id), true);
+                resp = sqlt.removeById(id).split("/");
+                if (resp[0].equals("OK"))
+                    return new Answer(String.format("Элемент с id %s удален", id), true);
+                else {
+                    logger.warn(resp[1]);
+                    return new Answer(resp[0], false);
+                }
             case ("min_by_venue"):
-                return new Answer(tv.getMinByVenue(), false);
+                return new Answer(sqlt.getMinByVenue(), false);
             case ("filter_contains_name"):
                 StringBuilder sb = new StringBuilder();
                 String name;
                 if (command.getCommand().length > 1) name = command.getCommand()[1];
                 else name = "";
-                for (Ticket t : tv.filterContainsName(name)) sb.append(t.toString());
+                for (Ticket t : sqlt.filterContainsName(name)) sb.append(t.toString());
                 return new Answer(sb.toString(), false);
             case ("filter_less_than_price"):
                 sb = new StringBuilder();
                 int price = Integer.parseInt(command.getCommand()[1]);
-                for (Ticket t : tv.filterLessThanPrice(price)) sb.append(t.toString());
+                for (Ticket t : sqlt.filterLessThanPrice(price)) sb.append(t.toString());
                 return new Answer(sb.toString(), false);
             case ("filter_by_price"):
                 sb = new StringBuilder();
                 price = Integer.parseInt(command.getCommand()[1]);
-                for (Ticket t : tv.filterByPrice(price)) sb.append(t.toString());
+                for (Ticket t : sqlt.filterByPrice(price)) sb.append(t.toString());
                 return new Answer(sb.toString(), false);
             case ("info"):
-                return new Answer(tv.getInfo(), false);
+                return new Answer(sqlt.getInfo(), false);
             case ("count_greater_than_type"):
-                return new Answer(String.valueOf(tv.getCountGreaterThanType(TicketType.valueOf(command.getCommand()[1]))), false);
+                return new Answer(String.valueOf(sqlt.getCountGreaterThanType(TicketType.valueOf(command.getCommand()[1]))), false);
             case ("print_field_ascending_type"):
-                return new Answer(tv.getFieldAscendingType(), false);
+                return new Answer(sqlt.getFieldAscendingType(), false);
         }
         return new Answer("error", true);
     }
@@ -205,24 +197,43 @@ public class Server {
      * @param command объект класса {@link Command}
      * @return возвращает объект класса {@link Answer} для отправки клиенту
      */
-    public Answer commandExecutionWithElement(Command command) {
+    public Answer commandExecutionWithElement(Command command) throws SQLException {
         switch (command.getCommand()[0]) {
             case ("add"):
-                if (tv.add(command.getTicket())) return new Answer("Объект добавлен", true);
-                else return new Answer("Объект не добавлен. Неоригинальный id", false);
+                String[] resp = sqlt.add(command.getTicketBuilder()).split("/");
+                if (resp[0].equals("OK")) return new Answer("Объект добавлен", true);
+                else {
+                    logger.warn(resp[1]);
+                    return new Answer(resp[0], false);
+                }
             case ("update"):
                 long id = Long.parseLong(command.getCommand()[1]);
-                if (!tv.validId(id)) return new Answer("Неверный id", false);
-                tv.update(command.getTicket(), id);
-                return new Answer("Объект обновлен", true);
+                if (!sqlt.validId(id)) return new Answer("Неверный id", false);
+                resp = sqlt.update(command.getTicketBuilder(), id).split("/");
+                if (resp[0].equals("OK")) return new Answer("Объект обновлен", true);
+                else {
+                    logger.warn(resp[1]);
+                    return new Answer(resp[0], false);
+                }
             case ("add_if_max"):
-                if (tv.addIfMax(command.getTicket())) return new Answer("Объект добавлен", true);
-                else return new Answer("Объект не добавлен", false);
+                resp = sqlt.addIfMax(command.getTicketBuilder()).split("/");
+                if (resp[0].equals("OK")) return new Answer("Объект добавлен", true);
+                else {
+                    return new Answer(resp[0], false);
+                }
             case ("add_if_min"):
-                if (tv.addIfMin(command.getTicket())) return new Answer("Объект добавлен", true);
-                else return new Answer("Объект не добавлен", false);
+                resp = sqlt.addIfMin(command.getTicketBuilder()).split("/");
+                if (resp[0].equals("OK")) return new Answer("Объект добавлен", true);
+                else {
+                    return new Answer(resp[0], false);
+                }
             case ("remove_lower"):
-                return new Answer("Удалено " + tv.removeLower(command.getTicket()) + " элементов", false);
+                resp = sqlt.removeLower(command.getTicketBuilder()).split("/");
+                if (resp[0].matches("^[0-9]+$")) return new Answer("Удалено " + resp[0] + " элементов", false);
+                else {
+                    logger.info(resp[1]);
+                    return new Answer(resp[0], false);
+                }
         }
         return new Answer("error", false);
     }

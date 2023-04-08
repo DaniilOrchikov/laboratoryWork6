@@ -18,11 +18,6 @@ import java.util.Vector;
  */
 public class TicketVector {
     /**
-     * Поле id.
-     * Отвечает за уникальность id билетов
-     */
-    private Long id = 0L;
-    /**
      * Поле даты и времени создания данного объекта
      */
     private final java.time.ZonedDateTime creationDate;
@@ -45,46 +40,10 @@ public class TicketVector {
      * Добавляет объект в коллекцию. При этом, если id объекта неоригинально, он не будет добавлен
      *
      * @param ticket объект класса {@link  Ticket}
-     * @return возврящает true если удалось добавить объект, false - если нет
      */
-    public boolean add(Ticket ticket) {
-        if (ticket.getId() != null) this.id = Math.max(this.id + 1, ticket.getId() + 1);
-        else {
-            ticket.setId(id);
-            id++;
-        }
-        if (tv.stream().anyMatch(t -> (t.getId() == ticket.getId() || t.getVenue().getId() == ticket.getVenue().getId())))
-            return false;
+    public void add(Ticket ticket) {
         tv.add(ticket);
         length++;
-        if (ticket.getId() >= id) id = ticket.getId();
-        return true;
-    }
-
-    /**
-     * Добавить новый элемент в коллекцию, если его значение превышает значение наибольшего элемента этой коллекции
-     *
-     * @param ticket объект класса {@link  Ticket}
-     * @return возвращает true, если удалось добавить объект, false - если нет
-     */
-    public boolean addIfMax(Ticket ticket) {
-        Ticket maxT = maxTicket();
-        if (maxT == null) return add(ticket);
-        if (ticket.compareTo(maxT) > 0) return add(ticket);
-        return false;
-    }
-
-    /**
-     * Добавить новый элемент в коллекцию, если его значение меньше, чем у наименьшего элемента этой коллекции
-     *
-     * @param ticket объект класса {@link  Ticket}
-     * @return возвращает true, если удалось добавить объект, false - если нет
-     */
-    public boolean addIfMin(Ticket ticket) {
-        Ticket minT = minTicket();
-        if (minT == null) return add(ticket);
-        if (ticket.compareTo(minT) < 0) return add(ticket);
-        return false;
     }
 
     /**
@@ -111,13 +70,10 @@ public class TicketVector {
      * Удаляет элемент по переданному индексу
      *
      * @param index индекс элемента, который нужно удалить
-     * @return возвращает true, если длинна коллекции больше указанного индекса, false - если нет
      */
-    public boolean remove(int index) {
-        if (index >= length) return false;
+    public void remove(int index) {
         tv.remove(index);
         length--;
-        return true;
     }
 
     /**
@@ -204,7 +160,7 @@ public class TicketVector {
      * @return возвращает максимальный элемент коллекции {@link Ticket#compareTo}.
      * Если коллекция пуста вернет null
      */
-    private Ticket maxTicket() {
+    public Ticket maxTicket() {
         return tv.stream().max(Ticket::compareTo).orElse(null);
     }
 
@@ -212,7 +168,7 @@ public class TicketVector {
      * @return возвращает минимальный элемент коллекции {@link Ticket#compareTo}.
      * Если коллекция пуста вернет null
      */
-    private Ticket minTicket() {
+    public Ticket minTicket() {
         return tv.stream().min(Ticket::compareTo).orElse(null);
     }
 
@@ -256,5 +212,9 @@ public class TicketVector {
             }
             return Long.compare(s1, s2);
         }).toList();
+    }
+    public Long getIdByIndex(int index){
+        if (index >= length) return -1L;
+        return tv.get(index).getId();
     }
 }

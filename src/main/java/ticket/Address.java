@@ -34,4 +34,12 @@ public class Address implements Serializable {
     public String toCSVFormat(String separator){
         return street + separator + zipCode;
     }
+
+    public String getStreet() {
+        return street;
+    }
+
+    public String getZipCode() {
+        return zipCode;
+    }
 }
