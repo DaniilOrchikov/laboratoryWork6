@@ -1,12 +1,7 @@
 package ticket;
 
-import utility.TicketVector;
-
-import javax.swing.plaf.PanelUI;
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 
 /**
  * Класс, который поэтапно создает объект класса {@link Ticket}. При этом каждый метод возвращает строку "OK" если поле создано корректно и сообщение об ошибке, в противном случае
