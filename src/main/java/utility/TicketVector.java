@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Vector;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Класс, отвечающий за организацию хранения и доступа к объектам класса {@link Ticket}. Тип коллекции, в которой хранятся объекты - Vector
@@ -30,7 +31,7 @@ public class TicketVector {
      *
      * @see TicketVector#tv
      */
-    private long length = 0;
+    private final AtomicLong length = new AtomicLong(0);
 
     public TicketVector() {
         creationDate = java.time.ZonedDateTime.now();
@@ -43,7 +44,7 @@ public class TicketVector {
      */
     public void add(Ticket ticket) {
         tv.add(ticket);
-        length++;
+        length.incrementAndGet();
     }
 
     /**
@@ -54,7 +55,7 @@ public class TicketVector {
      */
     public void update(Ticket ticket, long id) {
         tv.removeIf(t -> t.getId() == id);
-        length--;
+        length.decrementAndGet();
         add(ticket);
     }
 
@@ -63,7 +64,7 @@ public class TicketVector {
      */
     public void clear() {
         tv.clear();
-        length = 0;
+        length.set(0);
     }
 
     /**
@@ -73,7 +74,7 @@ public class TicketVector {
      */
     public void remove(int index) {
         tv.remove(index);
-        length--;
+        length.incrementAndGet();
     }
 
     /**
@@ -84,7 +85,7 @@ public class TicketVector {
      */
     public int removeLower(Ticket ticket) {
         List<Ticket> delTickets = tv.stream().filter(t -> ticket.compareTo(t) > 0).toList();
-        length -= delTickets.size();
+        length.addAndGet(-delTickets.size());
         tv.removeAll(delTickets);
         return delTickets.size();
     }
@@ -102,9 +103,9 @@ public class TicketVector {
      * @param id id элемента, который нужно удалить. Предполагается, что id проверенно на корректность (в коллекции существует элемент с таким id) {@link TicketVector#validId}
      */
     public void removeById(long id) {
-        length -= tv.size();
+        length.addAndGet(-tv.size());
         tv.removeIf(t -> t.getId() == id);
-        length += tv.size();
+        length.addAndGet(tv.size());
     }
 
     /**
@@ -214,7 +215,7 @@ public class TicketVector {
         }).toList();
     }
     public Long getIdByIndex(int index){
-        if (index >= length) return -1L;
+        if (index >= length.get()) return -1L;
         return tv.get(index).getId();
     }
 }

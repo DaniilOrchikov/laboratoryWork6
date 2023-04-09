@@ -21,14 +21,20 @@ public class Command implements Serializable {
      * Поле, определяющее передается ли билет. Если true - Передается, иначе нет.
      */
     public final boolean hasTicket;
+    public final String name;
+    public final String password;
 
-    public Command(String[] command, TicketBuilder tb) {
+    public Command(String[] command, TicketBuilder tb, String name, String password) {
+        this.name = name;
+        this.password = password;
         this.tb = tb;
         this.command = command;
         this.hasTicket = true;
     }
 
-    public Command(String[] command) {
+    public Command(String[] command, String name, String password) {
+        this.name = name;
+        this.password = password;
         this.command = command;
         this.hasTicket = false;
     }
@@ -39,5 +45,13 @@ public class Command implements Serializable {
 
     public String[] getCommand() {
         return command;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getPassword() {
+        return password;
     }
 }

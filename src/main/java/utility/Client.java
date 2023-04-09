@@ -52,6 +52,8 @@ public class Client {
      * Поле создателя объектов типа {@link Ticket}
      */
     private final TicketBuilder tb = new TicketBuilder();
+    public String userName;
+    public String userPassword;
 
     public Client(ConsoleWriter cw) throws IOException {
         this.cw = cw;
@@ -136,12 +138,68 @@ public class Client {
     public void nextCommand(String[] command) throws IOException {
         try {
             if (!checkingCompositeCommands(command)) return;
+            if (command[0].equals("sign_in") || command[0].equals("sign_up")) {
+                cw.println("Введите имя: ");
+                String name;
+                while (true) {
+                    name = nextInput();
+                    if (name.equals("")) {
+                        if (cw.getInputStatus() == 1) {
+                            cw.printIgnoringPrintStatus("В файле " + fileNamesStack.peek() + " введены неверные данные для авторизации");
+                            fileNamesStack.pop();
+                            in = scannerStack.pop();
+                            tb.clear();
+                            throw new NoSuchElementException("");
+                        }
+                        cw.println("Имя не может быть пустым");
+                    } else {
+                        break;
+                    }
+                }
+                cw.println("Введите пароль");
+                String password;
+                while (true) {
+                    password = nextInput();
+                    if (password.equals("")) {
+                        if (cw.getInputStatus() == 1) {
+                            cw.printIgnoringPrintStatus("В файле " + fileNamesStack.peek() + " введены неверные данные для авторизации");
+                            fileNamesStack.pop();
+                            in = scannerStack.pop();
+                            tb.clear();
+                            throw new NoSuchElementException("");
+                        }
+                        cw.println("Пароль не может быть пустым");
+                    } else {
+                        break;
+                    }
+                }
+                userName = name;
+                userPassword = password;
+                try {
+                    communicatingWithServer(command, (byte) 0);
+                } catch (ConnectException e) {
+                    userPassword = null;
+                    userName = null;
+                    cw.printIgnoringPrintStatus("Сервер не отвечает");
+                    if (cw.getInputStatus() != 0) return;
+                } catch (IOException e) {
+                    userPassword = null;
+                    userName = null;
+                    e.printStackTrace();
+                } catch (ClassNotFoundException | InterruptedException e) {
+                    userPassword = null;
+                    userName = null;
+                    throw new RuntimeException(e);
+                }
+                return;
+            }
             switch (command[0]) {
                 case ("update"):
                 case ("add_if_max"):
                 case ("add_if_min"):
                 case ("add"):
                 case ("remove_lower"):
+                    if (!authorizationVerification())return;
                     tb.clear();
                     cw.println("Введите имя: ");
                     if (!enteringField("name")) return;
@@ -184,6 +242,7 @@ public class Client {
                 case ("filter_by_price"):
                 case ("count_greater_than_type"):
                 case ("print_field_ascending_type"):
+                    if (!authorizationVerification())return;
                     try {
                         communicatingWithServer(command, (byte) 0);
                     } catch (ConnectException e) {
@@ -203,7 +262,7 @@ public class Client {
                             add {element}: добавить новый элемент в коллекцию
                             update id {element}: обновить значение элемента коллекции, id которого равен заданному
                             remove_by_id id: удалить элемент из коллекции по его id
-                            clear: очистить коллекцию
+                            clear: удаляет все добавленные вами объекты
                             execute_script file_name: считать и исполнить скрипт из указанного файла. В скрипте содержатся команды в таком же виде, в котором их вводит пользователь в интерактивном режиме.
                             exit: завершить программу (без сохранения в файл)
                             remove_first: удалить первый элемент из коллекции
@@ -219,6 +278,7 @@ public class Client {
                             print_field_ascending_type : вывести значения поля type всех элементов в порядке возрастания""");
                     break;
                 case ("execute_script"):
+                    if (!authorizationVerification())return;
                     try {
                         new Scanner(Paths.get(command[1]));
                     } catch (AccessDeniedException e) {
@@ -258,26 +318,24 @@ public class Client {
             if (mode == 1) {
                 if (command[0].equals("update")) {
                     tb.setId(Long.parseLong(command[1]));
-                    oos.writeObject(new Command(command, tb));
-                } else oos.writeObject(new Command(command, tb));
+                    oos.writeObject(new Command(command, tb, userName, userPassword));
+                } else oos.writeObject(new Command(command, tb, userName, userPassword));
             } else {
-                oos.writeObject(new Command(command));
+                oos.writeObject(new Command(command, userName, userPassword));
             }
             oos.close();
-            byte[] arr = baos.toByteArray();
-            ByteBuffer buf = ByteBuffer.wrap(arr);
+            ByteBuffer buf = ByteBuffer.wrap(baos.toByteArray());
             sock.write(buf);
             buf.clear();
             byte[] buffer = new byte[131072];
             ByteBuffer buff = ByteBuffer.wrap(buffer);
-//            sleep(300);
-            ObjectInputStream ois;
+            ObjectInputStream ois = null;
             Answer answer;
             long startTime = System.currentTimeMillis();
             while (true) {
                 if (System.currentTimeMillis() - startTime > 2000) {
-                    cw.printIgnoringPrintStatus("Не удалось получить ответ от сервера");
-                    return;
+                    answer = new Answer("Не удалось получить ответ от сервера", false);
+                    break;
                 }
                 sleep(30);
                 try {
@@ -291,7 +349,12 @@ public class Client {
             String answerText = answer.text();
             if (answer.systemInformation()) cw.println(answerText);
             else cw.printIgnoringPrintStatus(answerText);
-            ois.close();
+            if (!answerText.equals("Авторизация прошла успешно") && (command[0].equals("sign_up") || command[0].equals("sign_in"))) {
+                userName = null;
+                userPassword = null;
+            }
+            if (ois != null)
+                ois.close();
             sock.close();
         } catch (StreamCorruptedException e) {
             cw.printIgnoringPrintStatus("Не удалось получить ответ от сервера");
@@ -422,6 +485,14 @@ public class Client {
                 continue;
             }
             break;
+        }
+        return true;
+    }
+
+    private boolean authorizationVerification() {
+        if (userName == null || userPassword == null) {
+            cw.printIgnoringPrintStatus("Вы не авторизовались. Если у вас уже есть аккаунт введите команду sign_in. Иначе введите команду sign_up.");
+            return false;
         }
         return true;
     }

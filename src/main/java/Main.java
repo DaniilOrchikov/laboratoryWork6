@@ -1,7 +1,4 @@
-import utility.CSVReaderAndWriter;
-import utility.Client;
-import utility.ConsoleWriter;
-import utility.SQLTickets;
+import utility.*;
 
 import java.io.IOException;
 import java.sql.*;
@@ -14,7 +11,7 @@ public class Main {
         if (args.length > 0) {
             if (args[0].equals("server")) {
                 SQLTickets sqlt = new SQLTickets();
-                utility.Server ex = new utility.Server(sqlt);
+                Server ex = new Server(sqlt);
                 ex.createTQ();
                 ex.acceptingConnections();
             }
