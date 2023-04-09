@@ -3,15 +3,16 @@ package utility;
 import ticket.Ticket;
 import ticket.TicketType;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.sql.SQLException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,45 +39,68 @@ public class Server {
     private static final Logger logger = LogManager.getLogger(Server.class);
 
 
+    private final ExecutorService requestPool;
+    private final ExecutorService processingPool;
+    private final ExecutorService responsePool;
+
+
     public Server(SQLTickets sqlt) throws IOException, SQLException {
         this.sqlt = sqlt;
         sqlt.connectToBD();
-        serv = new ServerSocket(5454);
+        serv = new ServerSocket(5459);
         serv.setSoTimeout(200);
-    }
-
-    /**
-     * Чтение команды клиента
-     *
-     * @return возвращает полученную команду
-     */
-    private Command readRequest(Socket sock) throws IOException, ClassNotFoundException {
-        ObjectInputStream ois = new ObjectInputStream(sock.getInputStream());
-        return (Command) ois.readObject();
+        requestPool = ForkJoinPool.commonPool();
+        processingPool = Executors.newFixedThreadPool(10);
+        responsePool = ForkJoinPool.commonPool();
     }
 
     /**
      * Ответ клиенту
      */
-    private void response(Command command, Socket sock) throws IOException, SQLException {
-        Answer answer;
-        if (command.hasTicket) answer = commandExecutionWithElement(command);
-        else answer = commandExecution(command);
+    private void response(Answer answer, Socket sock) throws IOException, SQLException {
         ObjectOutputStream oos = new ObjectOutputStream(sock.getOutputStream());
         oos.writeObject(answer);
     }
 
-    public void acceptingConnections() throws IOException, ClassNotFoundException, SQLException {
+    public void connectionAcceptance(Socket sock){
+        logger.info("Установлено подключение. Адрес - " + sock.getRemoteSocketAddress() + ".");
+        requestPool.execute(() -> {
+            try {
+                ObjectInputStream ois = new ObjectInputStream(sock.getInputStream());
+                Command command = (Command) ois.readObject();
+                logger.info("Получена команда " + String.join(" ", command.getCommand()) + ". От " + sock.getRemoteSocketAddress() + ".");
+                processingPool.execute(() -> {
+                    Answer answer;
+                    try {
+                        answer = commandExecution(command);
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                    responsePool.execute(() -> {
+                        try {
+                            response(answer, sock);
+                            logger.info("Отправлен ответ " + sock.getRemoteSocketAddress() + ".");
+                        } catch (IOException | SQLException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                });
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        logger.info(sock.getRemoteSocketAddress() + " отключился.");
+    }
+
+    public void mainLoop() throws IOException, SQLException {
         logger.info("Сервер запущен.");
         while (true) {
             try {
                 Socket sock = serv.accept();
-                logger.info("Установлено подключение. Адрес - " + sock.getRemoteSocketAddress() + ".");
-                Command command = readRequest(sock);
-                logger.info("Получена команда " + String.join(" ", command.getCommand()) + ".");
-                response(command, sock);
-                logger.info("Отправлен ответ.");
-                logger.info(sock.getRemoteSocketAddress() + " отключился.");
+                connectionAcceptance(sock);
             } catch (SocketTimeoutException e) {
                 if (System.in.available() > 0) {
                     try {
@@ -129,7 +153,7 @@ public class Server {
                 return new Answer(str.toString(), false);
             case ("clear"):
                 String[] resp = sqlt.clear(command.getName()).split("/");
-                if (resp[0].equals("OK")) return new Answer("Коллекция очищена", true);
+                if (resp[0].equals("OK")) return new Answer("Все созданные вами объекты удалены из БД", true);
                 else {
                     logger.warn(resp[1]);
                     return new Answer(resp[0], false);
@@ -197,43 +221,27 @@ public class Server {
                 if (resp[0].equals("OK")) {
                     logger.info("Добавлен новый пользователь - " + command.getName());
                     return new Answer("Авторизация прошла успешно", true);
-                }
-                else {
+                } else {
                     if (resp.length == 2) logger.info(resp[1]);
                     return new Answer(resp[0], false);
                 }
-            case("sign_in"):
+            case ("sign_in"):
                 resp = authorizer.authorize(command.getName(), command.getPassword()).split("/");
                 if (resp[0].equals("OK")) {
                     return new Answer("Авторизация прошла успешно", true);
-                }
-                else {
+                } else {
                     if (resp.length == 2) logger.info(resp[1]);
                     return new Answer(resp[0], false);
                 }
-        }
-        return new Answer("error", true);
-    }
-
-    /**
-     * Исполнение команд, требующих создание объекта класса {@link Ticket}.
-     * Команды - <b>add</b>, <b>update</b>, <b>add_if_max</b>, <b>add_if_min</b>, <b>remove_lower</b>.<br>
-     * Передаются параметры нужные для создания объекта класса {@link Ticket}({@link Ticket#Ticket})
-     *
-     * @param command объект класса {@link Command}
-     * @return возвращает объект класса {@link Answer} для отправки клиенту
-     */
-    public Answer commandExecutionWithElement(Command command) throws SQLException {
-        switch (command.getCommand()[0]) {
             case ("add"):
-                String[] resp = sqlt.add(command.getTicketBuilder(), command.getName()).split("/");
+                resp = sqlt.add(command.getTicketBuilder(), command.getName()).split("/");
                 if (resp[0].equals("OK")) return new Answer("Объект добавлен", true);
                 else {
                     logger.warn(resp[1]);
                     return new Answer(resp[0], false);
                 }
             case ("update"):
-                long id = Long.parseLong(command.getCommand()[1]);
+                id = Long.parseLong(command.getCommand()[1]);
                 if (!sqlt.validId(id)) return new Answer("Неверный id", false);
                 resp = sqlt.update(command.getTicketBuilder(), id, command.getName()).split("/");
                 if (resp[0].equals("OK")) return new Answer("Объект обновлен", true);

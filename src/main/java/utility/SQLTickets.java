@@ -37,22 +37,15 @@ public class SQLTickets {
             } catch (SQLException e) {
                 conn.rollback();
             }
-            try (ResultSet rsA = stat.executeQuery("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name = 'address');")) {
-                if (rsA.next()) if (!rsA.getBoolean("exists"))
-                    stat.executeUpdate("CREATE TABLE address (" +
+            try (ResultSet rsT = stat.executeQuery("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name = 'ticket');")) {
+                if (rsT.next()) if (!rsT.getBoolean("exists"))
+                    stat.executeUpdate("CREATE TABLE ticket (" +
                             "id bigserial PRIMARY KEY, " +
-                            "street text , " +
-                            "zip_code text)");
-                conn.commit();
-            } catch (SQLException e) {
-                conn.rollback();
-            }
-            try (ResultSet rsC = stat.executeQuery("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name = 'coordinates');")) {
-                if (rsC.next()) if (!rsC.getBoolean("exists"))
-                    stat.executeUpdate("CREATE TABLE coordinates (" +
-                            "id bigserial PRIMARY KEY, " +
-                            "x integer, " +
-                            "y integer)");
+                            "name text, " +
+                            "creation_date timestamp NOT NULL DEFAULT NOW(), " +
+                            "price integer, " +
+                            "type ticket_type, " +
+                            "user_name text REFERENCES users(name))");
                 conn.commit();
             } catch (SQLException e) {
                 conn.rollback();
@@ -64,22 +57,29 @@ public class SQLTickets {
                             "name text, " +
                             "capacity bigint, " +
                             "type venue_type, " +
-                            "address_id integer REFERENCES address(id) ON DELETE CASCADE)");
+                            "ticket_id integer REFERENCES ticket(id) ON DELETE CASCADE)");
                 conn.commit();
             } catch (SQLException e) {
                 conn.rollback();
             }
-            try (ResultSet rsT = stat.executeQuery("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name = 'ticket');")) {
-                if (rsT.next()) if (!rsT.getBoolean("exists"))
-                    stat.executeUpdate("CREATE TABLE ticket (" +
+            try (ResultSet rsA = stat.executeQuery("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name = 'address');")) {
+                if (rsA.next()) if (!rsA.getBoolean("exists"))
+                    stat.executeUpdate("CREATE TABLE address (" +
                             "id bigserial PRIMARY KEY, " +
-                            "name text, " +
-                            "coordinates_id integer REFERENCES coordinates(id) ON DELETE CASCADE, " +
-                            "creation_date timestamp NOT NULL DEFAULT NOW(), " +
-                            "price integer, " +
-                            "type ticket_type, " +
-                            "venue_id integer REFERENCES venue(id) ON DELETE CASCADE," +
-                            "user_name text REFERENCES users(name))");
+                            "street text , " +
+                            "zip_code text," +
+                            "venue_id integer REFERENCES venue(id) ON DELETE CASCADE)");
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+            }
+            try (ResultSet rsC = stat.executeQuery("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name = 'coordinates');")) {
+                if (rsC.next()) if (!rsC.getBoolean("exists"))
+                    stat.executeUpdate("CREATE TABLE coordinates (" +
+                            "id bigserial PRIMARY KEY, " +
+                            "x integer, " +
+                            "y integer," +
+                            "ticket_id integer REFERENCES ticket(id) ON DELETE CASCADE)");
                 conn.commit();
             } catch (SQLException e) {
                 conn.rollback();
@@ -87,31 +87,22 @@ public class SQLTickets {
         }
     }
 
-    public String add(TicketBuilder tb, String userName) throws SQLException {
-        try (PreparedStatement coordinatesStmt = conn.prepareStatement("INSERT INTO coordinates (x, y) VALUES (?, ?) RETURNING id");
-             PreparedStatement addressStmt = conn.prepareStatement("INSERT INTO address (street, zip_code) VALUES (?, ?) RETURNING id");
-             PreparedStatement venueStmt = conn.prepareStatement("INSERT INTO venue (name, capacity, type, address_id) VALUES (?, ?, ?, ?) RETURNING id");
-             PreparedStatement ticketStmt = conn.prepareStatement("INSERT INTO ticket (name, coordinates_id, price, type, venue_id, user_name) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, creation_date")) {
-            Long cId = null;
+    public synchronized String add(TicketBuilder tb, String userName) throws SQLException {
+        try (PreparedStatement coordinatesStmt = conn.prepareStatement("INSERT INTO coordinates (x, y, ticket_id) VALUES (?, ?, ?)");
+             PreparedStatement addressStmt = conn.prepareStatement("INSERT INTO address (street, zip_code, venue_id) VALUES (?, ?, ?)");
+             PreparedStatement venueStmt = conn.prepareStatement("INSERT INTO venue (name, capacity, type, ticket_id) VALUES (?, ?, ?, ?) RETURNING id");
+             PreparedStatement ticketStmt = conn.prepareStatement("INSERT INTO ticket (name, price, type, user_name) VALUES (?, ?, ?, ?) RETURNING id, creation_date")) {
+            Long tId = null;
             ResultSet rs;
             try {
-                coordinatesStmt.setInt(1, tb.getX());
-                coordinatesStmt.setInt(2, tb.getY());
-                rs = coordinatesStmt.executeQuery();
+                ticketStmt.setString(1, tb.getName());
+                ticketStmt.setInt(2, tb.getPrice());
+                ticketStmt.setObject(3, tb.getType().toString(), Types.OTHER);
+                ticketStmt.setString(4, userName);
+                rs = ticketStmt.executeQuery();
                 if (rs.next()) {
-                    cId = rs.getLong("id");
-                }
-            } catch (SQLException e) {
-                conn.rollback();
-                return "Ошибка при попытке добавить объект в базу данных./" + e.getMessage();
-            }
-            Long aId = null;
-            try {
-                addressStmt.setString(1, tb.getAddressStreet());
-                addressStmt.setString(2, tb.getAddressZipCode());
-                rs = addressStmt.executeQuery();
-                if (rs.next()) {
-                    aId = rs.getLong("id");
+                    tId = rs.getLong("id");
+                    tb.setCreationDate(rs.getTimestamp("creation_date").toLocalDateTime());
                 }
             } catch (SQLException e) {
                 conn.rollback();
@@ -122,7 +113,7 @@ public class SQLTickets {
                 venueStmt.setString(1, tb.getName());
                 venueStmt.setLong(2, tb.getVenueCapacity());
                 venueStmt.setObject(3, tb.getVenueType().toString(), Types.OTHER);
-                venueStmt.setLong(4, aId);
+                venueStmt.setLong(4, tId);
                 rs = venueStmt.executeQuery();
                 if (rs.next()) {
                     vId = rs.getLong("id");
@@ -131,19 +122,20 @@ public class SQLTickets {
                 conn.rollback();
                 return "Ошибка при попытке добавить объект в базу данных./" + e.getMessage();
             }
-            Long tId = null;
             try {
-                ticketStmt.setString(1, tb.getName());
-                ticketStmt.setLong(2, cId);
-                ticketStmt.setInt(3, tb.getPrice());
-                ticketStmt.setObject(4, tb.getType().toString(), Types.OTHER);
-                ticketStmt.setLong(5, vId);
-                ticketStmt.setString(6, userName);
-                rs = ticketStmt.executeQuery();
-                if (rs.next()) {
-                    tId = rs.getLong("id");
-                    tb.setCreationDate(rs.getTimestamp("creation_date").toLocalDateTime());
-                }
+                coordinatesStmt.setInt(1, tb.getX());
+                coordinatesStmt.setInt(2, tb.getY());
+                coordinatesStmt.setLong(3, tId);
+                coordinatesStmt.executeUpdate();
+            } catch (SQLException e) {
+                conn.rollback();
+                return "Ошибка при попытке добавить объект в базу данных./" + e.getMessage();
+            }
+            try {
+                addressStmt.setString(1, tb.getAddressStreet());
+                addressStmt.setString(2, tb.getAddressZipCode());
+                addressStmt.setLong(3, vId);
+                addressStmt.executeUpdate();
             } catch (SQLException e) {
                 conn.rollback();
                 return "Ошибка при попытке добавить объект в базу данных./" + e.getMessage();
@@ -157,58 +149,50 @@ public class SQLTickets {
         return "OK";
     }
 
-    public String addIfMax(TicketBuilder tb, String userName) throws SQLException {
+    public synchronized String addIfMax(TicketBuilder tb, String userName) throws SQLException {
         Ticket maxT = tv.maxTicket();
         if (maxT == null) return add(tb, userName);
         if (tb.compareTo(new TicketBuilder(maxT)) > 0) return add(tb, userName);
         return "Объект не добавлен";
     }
 
-    public String addIfMin(TicketBuilder tb, String userName) throws SQLException {
+    public synchronized String addIfMin(TicketBuilder tb, String userName) throws SQLException {
         Ticket minT = tv.minTicket();
         if (minT == null) return add(tb, userName);
         if (tb.compareTo(new TicketBuilder(minT)) < 0) return add(tb, userName);
         return "Объект не добавлен";
     }
 
-    public String update(TicketBuilder tb, long id, String userName) throws SQLException {
-        try {
-            PreparedStatement ticketStatement = conn.prepareStatement("SELECT venue_id, coordinates_id, creation_date FROM ticket WHERE id = ? AND user_name = ?");
-            ticketStatement.setLong(1, id);
-            ticketStatement.setString(2, userName);
-            ResultSet ticketRs = ticketStatement.executeQuery();
-
-            if (ticketRs.next()) {
-                long venueId = ticketRs.getLong("venue_id");
-                long coordinatesId = ticketRs.getLong("coordinates_id");
-                LocalDateTime creationDate = ticketRs.getTimestamp("creation_date").toLocalDateTime();
-
-                PreparedStatement coordinatesStatement = conn.prepareStatement("UPDATE coordinates SET x = ?, y = ? WHERE id = ?");
-                coordinatesStatement.setInt(1, tb.getX());
-                coordinatesStatement.setInt(2, tb.getY());
-                coordinatesStatement.setLong(3, coordinatesId);
-                coordinatesStatement.executeUpdate();
-
-                PreparedStatement venueStatement = conn.prepareStatement("UPDATE venue SET name = ?, capacity = ?, type = ? WHERE id = ?");
+    public synchronized String update(TicketBuilder tb, long id, String userName) throws SQLException {
+        try (PreparedStatement ticketStatement = conn.prepareStatement("UPDATE ticket SET name = ?, price = ?, type = ? WHERE id = ?, user_name = ? RETURNING creation_date");
+             PreparedStatement venueStatement = conn.prepareStatement("UPDATE venue SET name = ?, capacity = ?, type = ? WHERE ticket_id = ? RETURNING id");
+             PreparedStatement addressStatement = conn.prepareStatement("UPDATE address SET street = ?, zip_code = ? WHERE venue_id = ?");
+             PreparedStatement coordinatesStatement = conn.prepareStatement("UPDATE coordinates SET x = ?, y = ? WHERE ticket_id = ?")) {
+            ticketStatement.setString(1, tb.getName());
+            ticketStatement.setInt(2, tb.getPrice());
+            ticketStatement.setObject(3, tb.getType(), Types.OTHER);
+            ticketStatement.setLong(4, id);
+            ticketStatement.setString(5, userName);
+            ResultSet rs = ticketStatement.executeQuery();
+            if (rs.next()) {
+                LocalDateTime creationDate = rs.getTimestamp("creation_date").toLocalDateTime();
+                Long vId = null;
                 venueStatement.setString(1, tb.getName());
                 venueStatement.setLong(2, tb.getVenueCapacity());
-                venueStatement.setObject(3, tb.getVenueType().toString(), Types.OTHER);
-                venueStatement.setLong(4, venueId);
-                venueStatement.executeUpdate();
+                venueStatement.setObject(3, tb.getVenueType(), Types.OTHER);
+                venueStatement.setLong(4, id);
 
-                PreparedStatement addressStatement = conn.prepareStatement("UPDATE address SET street = ?, zip_code = ? WHERE id = (SELECT address_id FROM venue WHERE id = ?)");
+                rs = venueStatement.executeQuery();
+                if (rs.next())
+                    vId = rs.getLong("id");
+
                 addressStatement.setString(1, tb.getAddressStreet());
                 addressStatement.setString(2, tb.getAddressZipCode());
-                addressStatement.setLong(3, venueId);
-                addressStatement.executeUpdate();
+                addressStatement.setLong(1, vId);
 
-                PreparedStatement ticketUpdateStatement = conn.prepareStatement("UPDATE ticket SET name = ?, price = ?, type = ? WHERE id = ?");
-                ticketUpdateStatement.setString(1, tb.getName());
-                ticketUpdateStatement.setInt(2, tb.getPrice());
-                ticketUpdateStatement.setObject(3, tb.getType().toString(), Types.OTHER);
-                ticketUpdateStatement.setLong(4, id);
-                ticketUpdateStatement.executeUpdate();
-
+                coordinatesStatement.setInt(1, tb.getX());
+                coordinatesStatement.setInt(2, tb.getY());
+                coordinatesStatement.setLong(3, id);
                 conn.commit();
                 tb.setCreationDate(creationDate);
             } else {
@@ -223,20 +207,22 @@ public class SQLTickets {
         return "OK";
     }
 
-    public String clear(String userName) throws SQLException {
-        try (PreparedStatement preparedStatement = conn.prepareStatement("DELETE FROM ticket WHERE user_name = ?")) {
+    public synchronized String clear(String userName) throws SQLException {
+        try (PreparedStatement preparedStatement = conn.prepareStatement("DELETE FROM ticket WHERE user_name = ? RETURNING id")) {
             preparedStatement.setString(1, userName);
-            preparedStatement.executeUpdate();
+            ResultSet rs = preparedStatement.executeQuery();
+            while (rs.next()){
+                tv.removeById(rs.getLong("id"));
+            }
             conn.commit();
         } catch (SQLException e) {
             conn.rollback();
-            return "Ошибка при очистке базы данных./" + e.getMessage();
+            return "Ошибка при удалении объектов./" + e.getMessage();
         }
-        tv.clear();
         return "OK";
     }
 
-    public String remove(int index, String userName) throws SQLException {
+    public synchronized String remove(int index, String userName) throws SQLException {
         Long id = tv.getIdByIndex(index);
         if (id == -1) return index == 0 ? "Вектор пустой" : "Индекс выходит за границы вектора";
         try (PreparedStatement deleteStatement = conn.prepareStatement("DELETE FROM ticket WHERE id = ?");
@@ -261,7 +247,7 @@ public class SQLTickets {
         return tv.getAll();
     }
 
-    public String removeLower(TicketBuilder tb, String userName) throws SQLException {
+    public synchronized String removeLower(TicketBuilder tb, String userName) throws SQLException {
         TicketBuilder tb1 = new TicketBuilder();
         List<Long> idL = new ArrayList<>();
         try (PreparedStatement selectIdStatement = conn.prepareStatement("SELECT ticket.id, price, capacity, ticket.type FROM ticket WHERE user_name = ? JOIN venue ON venue.id = ticket.venue_id");
@@ -290,7 +276,7 @@ public class SQLTickets {
         return String.valueOf(tv.removeLower(tb.getTicket()));
     }
 
-    public String removeById(long id, String userName) {
+    public synchronized String removeById(long id, String userName) {
         try (PreparedStatement deleteStatement = conn.prepareStatement("DELETE FROM ticket WHERE id = ?");
              PreparedStatement existsStatement = conn.prepareStatement("SELECT EXISTS(SELECT * FROM ticket WHERE id = ? AND user_name = ?)")) {
             existsStatement.setLong(1, id);
@@ -345,16 +331,16 @@ public class SQLTickets {
 
     public String loadTickets() throws SQLException {
         String select_query =
-                "SELECT ticket.id, name, creation_date, price, venue_type, x, y, capacity, type, street, zip_code FROM ticket " +
-                        "JOIN (SELECT venue.id, capacity, venue.type AS venue_type, street, zip_code FROM venue JOIN address ON address.id = venue.address_id) AS svenue " +
-                        "ON svenue.id = ticket.venue_id " +
-                        "JOIN coordinates ON coordinates.id = ticket.coordinates_id";
+                "SELECT ticket.id, ticket.name, price, capacity, x, y, ticket.type, svenue.type AS venue_type, creation_date, street, zip_code FROM ticket " +
+                        "JOIN coordinates ON coordinates.ticket_id = ticket.id " +
+                        "JOIN (SELECT * FROM venue JOIN address ON address.venue_id = venue.id) AS svenue ON svenue.ticket_id = ticket.id";
         TicketBuilder tb = new TicketBuilder();
         try (PreparedStatement stat = conn.prepareStatement(select_query);
              ResultSet rsT = stat.executeQuery()) {
             while (rsT.next()) {
                 tb.clear();
                 tb.setId(rsT.getLong("id"));
+                tb.setName(rsT.getString("name"));
                 tb.setCreationDate(rsT.getTimestamp("creation_date").toLocalDateTime());
                 tb.setPrice(String.valueOf(rsT.getInt("price")));
                 tb.setType(rsT.getString("type"));

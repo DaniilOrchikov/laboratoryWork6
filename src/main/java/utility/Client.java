@@ -310,7 +310,7 @@ public class Client {
      */
     private void communicatingWithServer(String[] command, byte mode) throws IOException, InterruptedException, ClassNotFoundException {
         try {
-            int port = 5454;
+            int port = 5459;
             SocketChannel sock = SocketChannel.open(new InetSocketAddress(port));
             sock.configureBlocking(false);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();

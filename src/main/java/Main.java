@@ -11,15 +11,15 @@ public class Main {
         if (args.length > 0) {
             if (args[0].equals("server")) {
                 SQLTickets sqlt = new SQLTickets();
-                Server ex = new Server(sqlt);
-                ex.createTQ();
-                ex.acceptingConnections();
+                Server serv = new Server(sqlt);
+                serv.createTQ();
+                serv.mainLoop();
             }
         } else {
             try {
                 ConsoleWriter cw = new ConsoleWriter();
-                Client cr = new Client(cw);
-                cr.readingCycle();
+                Client client = new Client(cw);
+                client.readingCycle();
             } catch (IOException e) {
                 e.printStackTrace();
             }

@@ -25,7 +25,7 @@ public class TicketVector {
     /**
      * Поле коллекции, в которой хранятся объекты класса {@link Ticket}
      */
-    private final Vector<Ticket> tv = new Vector<>();
+    private volatile Vector<Ticket> tv = new Vector<>();
     /**
      * Поле длинны коллекции tv
      *
@@ -59,13 +59,6 @@ public class TicketVector {
         add(ticket);
     }
 
-    /**
-     * Очищает коллекцию
-     */
-    public void clear() {
-        tv.clear();
-        length.set(0);
-    }
 
     /**
      * Удаляет элемент по переданному индексу
