@@ -1,7 +1,5 @@
 package ticket;
 
-import utility.CSVReaderAndWriter;
-
 import java.io.Serializable;
 
 /**
@@ -52,13 +50,7 @@ public class Venue implements Comparable<Venue>, Serializable {
     public String toString() {
         return String.format("{id:%s, name:%s, capacity:%s, type:%s, address:%s}", id, name, capacity, type, address);
     }
-    /**
-     * @param separator символ разделения колонок в csv файле. {@link CSVReaderAndWriter#separator}
-     * @return возвращает строку в формате для записи в csv файл
-     */
-    public String toCSVFormat(String separator) {
-        return capacity + separator + type + separator + address.toCSVFormat(separator);
-    }
+
 
     /**
      * @param v объект типа {@link Venue}, с которым производится сравнение

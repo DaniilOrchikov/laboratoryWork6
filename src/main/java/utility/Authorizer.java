@@ -16,7 +16,7 @@ public class Authorizer {
         try (Statement stat = conn.createStatement()) {
             ResultSet rsV = stat.executeQuery("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name = 'users')");
             if (rsV.next() && !rsV.getBoolean(1)) {
-                stat.executeUpdate("CREATE TABLE users (name text PRIMARY KEY, password text, salt char(10))");
+                stat.executeUpdate("CREATE TABLE users (name text PRIMARY KEY, password text NOT NULL, salt char(10) NOT NULL)");
                 conn.commit();
             }
         } catch (SQLException e) {

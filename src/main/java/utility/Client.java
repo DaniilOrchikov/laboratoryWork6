@@ -1,6 +1,5 @@
 package utility;
 
-import ticket.Ticket;
 import ticket.TicketBuilder;
 import ticket.TicketType;
 import ticket.VenueType;
@@ -130,7 +129,7 @@ public class Client {
      * Выборка команды.
      * <br>Если команда не требует обращения к коллекции - исполнение команды.
      * <br>Если команда не требует ввод объекта - команда передается на сервер {@link Server}({@link Server#commandExecution})
-     * <br>Если команда требует ввода объекта - просит ввести поля и создает объект с помощью {@link TicketBuilder}. Далее передает данные и команду {@link Server}({@link Server#commandExecutionWithElement})
+     * <br>Если команда требует ввода объекта - просит ввести поля и создает объект с помощью {@link TicketBuilder}. Далее передает данные и команду {@link Server}({@link Server#commandExecution})
      * <br>Команды передаются с помощью класса {@link Command}
      *
      * @param command массив строк (команда, которую необходимо исполнить и, при необходимости, параметры)
@@ -310,7 +309,7 @@ public class Client {
      */
     private void communicatingWithServer(String[] command, byte mode) throws IOException, InterruptedException, ClassNotFoundException {
         try {
-            int port = 5459;
+            int port = 5465;
             SocketChannel sock = SocketChannel.open(new InetSocketAddress(port));
             sock.configureBlocking(false);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();

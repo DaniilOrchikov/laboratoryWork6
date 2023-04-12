@@ -31,7 +31,7 @@ public class TicketVector {
      *
      * @see TicketVector#tv
      */
-    private final AtomicLong length = new AtomicLong(0);
+    private AtomicLong length = new AtomicLong(0);
 
     public TicketVector() {
         creationDate = java.time.ZonedDateTime.now();
@@ -42,9 +42,14 @@ public class TicketVector {
      *
      * @param ticket объект класса {@link  Ticket}
      */
-    public void add(Ticket ticket) {
+    public synchronized void add(Ticket ticket) {
         tv.add(ticket);
         length.incrementAndGet();
+    }
+
+    public synchronized void clear() {
+        tv.clear();
+        length.set(0);
     }
 
     /**
@@ -53,7 +58,7 @@ public class TicketVector {
      * @param ticket объект типа {@link Ticket}
      * @param id     id объекта, который надо обновить. Предполагается, что id проверенно на корректность (в коллекции существует элемент с таким id) {@link TicketVector#validId}
      */
-    public void update(Ticket ticket, long id) {
+    public synchronized void update(Ticket ticket, long id) {
         tv.removeIf(t -> t.getId() == id);
         length.decrementAndGet();
         add(ticket);
@@ -65,9 +70,9 @@ public class TicketVector {
      *
      * @param index индекс элемента, который нужно удалить
      */
-    public void remove(int index) {
+    public synchronized void remove(int index) {
         tv.remove(index);
-        length.incrementAndGet();
+        length.decrementAndGet();
     }
 
     /**
@@ -76,7 +81,7 @@ public class TicketVector {
      * @param ticket объект класса {@link Ticket}, с которым производится сравнение {@link Ticket#compareTo}
      * @return возвращает количество удаленных объектов
      */
-    public int removeLower(Ticket ticket) {
+    public synchronized int removeLower(Ticket ticket) {
         List<Ticket> delTickets = tv.stream().filter(t -> ticket.compareTo(t) > 0).toList();
         length.addAndGet(-delTickets.size());
         tv.removeAll(delTickets);
@@ -86,7 +91,7 @@ public class TicketVector {
     /**
      * @return возвращает массив со всеми элементами коллекции
      */
-    public List<Ticket> getAll() {
+    public synchronized List<Ticket> getAll() {
         return sortBySize(tv.stream().toList());
     }
 
@@ -95,7 +100,7 @@ public class TicketVector {
      *
      * @param id id элемента, который нужно удалить. Предполагается, что id проверенно на корректность (в коллекции существует элемент с таким id) {@link TicketVector#validId}
      */
-    public void removeById(long id) {
+    public synchronized void removeById(long id) {
         length.addAndGet(-tv.size());
         tv.removeIf(t -> t.getId() == id);
         length.addAndGet(tv.size());
@@ -104,7 +109,7 @@ public class TicketVector {
     /**
      * @return возвращает минимальный элемент коллекции в строковом представлении. Сравнение ведется по полю venue {@link Venue#compareTo}
      */
-    public String getMinByVenue() {
+    public synchronized String getMinByVenue() {
         Optional<Ticket> t = tv.stream().min(Comparator.comparing(Ticket::getVenue));
         return t.isPresent() ? t.get().toString() : "Массив пустой";
     }
@@ -113,7 +118,7 @@ public class TicketVector {
      * @param str строка, по которой ведется поиск
      * @return возвращает элементы, значение поля name которых содержит заданную подстроку
      */
-    public List<Ticket> filterContainsName(String str) {
+    public synchronized List<Ticket> filterContainsName(String str) {
         return sortBySize(tv.stream().filter(t -> t.getName().contains(str)).toList());
     }
 
@@ -121,7 +126,7 @@ public class TicketVector {
      * @param price число
      * @return возвращает элементы, значение поля price которых меньше заданного
      */
-    public List<Ticket> filterLessThanPrice(int price) {
+    public synchronized List<Ticket> filterLessThanPrice(int price) {
         return sortBySize(tv.stream().filter(t -> t.getPrice() < price).toList());
     }
 
@@ -129,14 +134,14 @@ public class TicketVector {
      * @param price число
      * @return возвращает элементы, значение поля price которых равно заданному
      */
-    public List<Ticket> filterByPrice(int price) {
+    public synchronized List<Ticket> filterByPrice(int price) {
         return sortBySize(tv.stream().filter(t -> t.getPrice() == price).toList());
     }
 
     /**
      * @return возвращает значения поля type всех элементов в порядке возрастания {@link TicketType}
      */
-    public String getFieldAscendingType() {
+    public synchronized String getFieldAscendingType() {
         StringBuilder str = new StringBuilder();
         tv.stream().sorted((t1, t2) -> t2.getType().compareTo(t1.getType())).forEach(t -> str.append(String.format("id:%s - type:%s\n", t.getId(), t.getType())));
         return str.toString();
@@ -146,7 +151,7 @@ public class TicketVector {
      * @param type тип билета {@link TicketType}
      * @return возвращает количество элементов коллекции, тип которых превышает переданный
      */
-    public long getCountGreaterThanType(TicketType type) {
+    public synchronized long getCountGreaterThanType(TicketType type) {
         return tv.stream().filter(t -> type.compareTo(t.getType()) > 0).count();
     }
 
@@ -154,7 +159,7 @@ public class TicketVector {
      * @return возвращает максимальный элемент коллекции {@link Ticket#compareTo}.
      * Если коллекция пуста вернет null
      */
-    public Ticket maxTicket() {
+    public synchronized Ticket maxTicket() {
         return tv.stream().max(Ticket::compareTo).orElse(null);
     }
 
@@ -162,14 +167,14 @@ public class TicketVector {
      * @return возвращает минимальный элемент коллекции {@link Ticket#compareTo}.
      * Если коллекция пуста вернет null
      */
-    public Ticket minTicket() {
+    public synchronized Ticket minTicket() {
         return tv.stream().min(Ticket::compareTo).orElse(null);
     }
 
     /**
      * @return возвращает информацию об коллекции <b>дата инициализации {@link TicketVector#creationDate}</b>, <b>количество элементов {@link TicketVector#length}</b>, <b>максимальный элемент {@link TicketVector#maxTicket}</b>, <b>минимальный элемент {@link TicketVector#minTicket}</b>
      */
-    public String getInfo() {
+    public synchronized String getInfo() {
         return String.format("Тип - Vector\nДата инициализации - %s\nКоличество элементов - %s\nМаксимальный элемент - %s\nМинимальный элемент - %s", creationDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss ZZ")), length, maxTicket(), minTicket());
     }
 
@@ -179,12 +184,13 @@ public class TicketVector {
      * @param id число
      * @return возвращает true, если в коллекции есть элемент с указанным id, false - если нет
      */
-    public boolean validId(long id) {
+    public synchronized boolean validId(long id) {
         return tv.stream().anyMatch(t -> t.getId() == id);
     }
 
     /**
      * Сортирует передаваемую коллекцию по возрастанию размера объекта
+     *
      * @param arr передаваемая коллекция
      * @return возвращает отсортированную последовательность
      */
@@ -207,7 +213,8 @@ public class TicketVector {
             return Long.compare(s1, s2);
         }).toList();
     }
-    public Long getIdByIndex(int index){
+
+    public Long getIdByIndex(int index) {
         if (index >= length.get()) return -1L;
         return tv.get(index).getId();
     }

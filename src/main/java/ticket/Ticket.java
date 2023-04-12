@@ -1,13 +1,8 @@
 package ticket;
 
-import utility.CSVReaderAndWriter;
-
 import java.io.Serializable;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Класс билета с полями <b>id</b>, <b>name</b>, <b>coordinates</b>, <b>creationDate</b>, <b>price</b>, <b>type</b> и <b>venue</b>
- */
 public class Ticket implements Comparable<Ticket>, Serializable {
     /**
      * Поле id.
@@ -45,17 +40,9 @@ public class Ticket implements Comparable<Ticket>, Serializable {
      */
     private final Venue venue;
 
+
     public Ticket(Long id, String name, Coordinates coordinates, java.time.LocalDateTime creationDate, Integer price, TicketType type, Venue venue) {
         this.id = id;
-        this.name = name;
-        this.coordinates = coordinates;
-        this.creationDate = creationDate;
-        this.price = price;
-        this.type = type;
-        this.venue = venue;
-    }
-
-    public Ticket(String name, Coordinates coordinates, java.time.LocalDateTime creationDate, Integer price, TicketType type, Venue venue) {
         this.name = name;
         this.coordinates = coordinates;
         this.creationDate = creationDate;
@@ -67,14 +54,6 @@ public class Ticket implements Comparable<Ticket>, Serializable {
     @Override
     public String toString() {
         return String.format("{id:%s, name:%s, coordinates:%s, creationDate:%s, price:%s, type:%s, venue:%s}", id, name, coordinates, creationDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")), price, type, venue);
-    }
-
-    /**
-     * @param separator символ разделения колонок в csv файле. {@link CSVReaderAndWriter#separator}
-     * @return возвращает строку в формате для записи в csv файл
-     */
-    public String toCSVFormat(String separator) {
-        return id + separator + name + separator + coordinates.toCSVFormat(separator) + separator + creationDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + separator + price + separator + type + separator + venue.toCSVFormat(separator);
     }
 
     /**
@@ -117,10 +96,10 @@ public class Ticket implements Comparable<Ticket>, Serializable {
         return type;
     }
     public int getX(){
-        return coordinates.getX();
+        return coordinates.x();
     }
     public int getY(){
-        return coordinates.getY();
+        return coordinates.y();
     }
 
     public Coordinates getCoordinates() {

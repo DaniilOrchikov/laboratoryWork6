@@ -1,6 +1,5 @@
 package utility;
 
-import ticket.Ticket;
 import ticket.TicketBuilder;
 
 import java.io.Serializable;

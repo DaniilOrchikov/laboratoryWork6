@@ -6,7 +6,6 @@ import ticket.TicketType;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketTimeoutException;
 import java.sql.SQLException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
@@ -47,8 +46,7 @@ public class Server {
     public Server(SQLTickets sqlt) throws IOException, SQLException {
         this.sqlt = sqlt;
         sqlt.connectToBD();
-        serv = new ServerSocket(5459);
-        serv.setSoTimeout(200);
+        serv = new ServerSocket(5465);
         requestPool = ForkJoinPool.commonPool();
         processingPool = Executors.newFixedThreadPool(10);
         responsePool = ForkJoinPool.commonPool();
@@ -62,7 +60,7 @@ public class Server {
         oos.writeObject(answer);
     }
 
-    public void connectionAcceptance(Socket sock){
+    public void connectionAcceptance(Socket sock) {
         logger.info("Установлено подключение. Адрес - " + sock.getRemoteSocketAddress() + ".");
         requestPool.execute(() -> {
             try {
@@ -97,41 +95,46 @@ public class Server {
 
     public void mainLoop() throws IOException, SQLException {
         logger.info("Сервер запущен.");
+        Runnable accept = () -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                Socket sock;
+                try {
+                    sock = serv.accept();
+                    connectionAcceptance(sock);
+                } catch (IOException e) {
+                    break;
+                }
+            }
+        };
+        Thread thread = new Thread(accept);
+        thread.start();
         while (true) {
             try {
-                Socket sock = serv.accept();
-                connectionAcceptance(sock);
-            } catch (SocketTimeoutException e) {
-                if (System.in.available() > 0) {
-                    try {
-                        Scanner in = new Scanner(System.in);
-                        switch (in.next()) {
-                            case ("save"):
-//                                if (csvRW.writeToCSV(sqlt.getAll())) logger.info("Сохранение прошло успешно.");
-//                                else logger.warn("Не удалось сохранить данные в связи с ошибкой записи в файл.");
-                                break;
-                            case ("exit"):
-//                                if (csvRW.writeToCSV(sqlt.getAll())) logger.info("Сохранение прошло успешно.");
-//                                else logger.warn("Не удалось сохранить данные в связи с ошибкой записи в файл.");
-                                logger.info("Сервер выключен.");
-                                sqlt.exit();
-                                serv.close();
-                                System.exit(0);
-                        }
-                    } catch (NoSuchElementException err) {
-                        logger.warn("Экстренное выключение сервера.");
-                        sqlt.exit();
-                        serv.close();
-                        System.exit(0);
+                Scanner in = new Scanner(System.in);
+                switch (in.next()) {
+                    case ("exit") -> {
+                        logger.info("Сервер выключен.");
+                        exit(thread);
+                    }
+                    case ("clear") -> {
+                        String resp = sqlt.clearAll();
+                        if (resp.equals("OK")) logger.info("Коллекция очищена");
+                        else logger.error(resp);
                     }
                 }
+            } catch (NoSuchElementException err) {
+                logger.warn("Экстренное выключение сервера.");
+                exit(thread);
             }
         }
     }
-
-    /**
-     * С помощью {@link CSVReaderAndWriter} считывает объекты из csv файла и добавляет в вектор ({@link TicketVector})
-     */
+    private void exit(Thread thread) throws SQLException, IOException {
+        thread.interrupt();
+        sqlt.exit();
+        processingPool.shutdown();
+        serv.close();
+        System.exit(0);
+    }
     public void createTQ() throws SQLException {
         String resp = sqlt.loadTickets();
         if (resp.equals("OK")) logger.info("Загрузка коллекции из базы данных прошла успешно");

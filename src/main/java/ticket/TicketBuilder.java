@@ -1,5 +1,6 @@
 package ticket;
 
+
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
@@ -7,6 +8,11 @@ import java.time.LocalDateTime;
  * Класс, который поэтапно создает объект класса {@link Ticket}. При этом каждый метод возвращает строку "OK" если поле создано корректно и сообщение об ошибке, в противном случае
  */
 public class TicketBuilder implements Serializable, Comparable<TicketBuilder> {
+    /**
+     * Класс билета с полями <b>id</b>, <b>name</b>, <b>coordinates</b>, <b>creationDate</b>, <b>price</b>, <b>type</b> и <b>venue</b>
+     */
+
+
     private Long id = null;
     /*
      * Не может быть null, строка не может быть пустой
@@ -44,20 +50,21 @@ public class TicketBuilder implements Serializable, Comparable<TicketBuilder> {
     private Integer y = null;
     private LocalDateTime creationDate = null;
 
-    public TicketBuilder(){
+    public TicketBuilder() {
 
     }
-    public TicketBuilder(Ticket t){
+
+    public TicketBuilder(Ticket t) {
         this.name = t.getName();
         this.coordinates = t.getCoordinates();
         this.price = t.getPrice();
         this.type = t.getType();
         this.venueCapacity = t.getVenue().getCapacity();
         this.venueType = t.getVenue().getType();
-        this.addressStreet = t.getVenue().getAddress().getStreet();
-        this.addressZipCode = t.getVenue().getAddress().getZipCode();
-        this.x = coordinates.getX();
-        this.y = coordinates.getY();
+        this.addressStreet = t.getVenue().getAddress().street();
+        this.addressZipCode = t.getVenue().getAddress().zipCode();
+        this.x = coordinates.x();
+        this.y = coordinates.y();
     }
 
     public String setName(String name) {
@@ -183,7 +190,8 @@ public class TicketBuilder implements Serializable, Comparable<TicketBuilder> {
     public void setCreationDate(LocalDateTime dt) {
         this.creationDate = dt;
     }
-    public LocalDateTime getCreationDate(){
+
+    public LocalDateTime getCreationDate() {
         return creationDate;
     }
 
@@ -228,7 +236,7 @@ public class TicketBuilder implements Serializable, Comparable<TicketBuilder> {
         return new Ticket(id, name, new Coordinates(x, y), this.creationDate == null ? LocalDateTime.now() : creationDate, price, type, new Venue(id, name, venueCapacity, venueType, new Address(addressStreet, addressZipCode)));
     }
 
-    public void setId(Long id){
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -266,9 +274,10 @@ public class TicketBuilder implements Serializable, Comparable<TicketBuilder> {
         return false;
     }
 
-    public boolean hasId(){
+    public boolean hasId() {
         return id != null;
     }
+
     /**
      * Сравнивает объект с объектом типа ticket.Ticket {@link Ticket}
      * Сравнение происходит по полям {@link Ticket#type}({@link TicketType}), {@link Ticket#venue}({@link Venue}) и {@link Ticket#price}
@@ -284,3 +293,4 @@ public class TicketBuilder implements Serializable, Comparable<TicketBuilder> {
         return v;
     }
 }
+

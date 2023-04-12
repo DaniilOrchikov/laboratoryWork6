@@ -45,7 +45,7 @@ public class SQLTickets {
                             "creation_date timestamp NOT NULL DEFAULT NOW(), " +
                             "price integer, " +
                             "type ticket_type, " +
-                            "user_name text REFERENCES users(name))");
+                            "user_name text REFERENCES users(name) ON DELETE CASCADE)");
                 conn.commit();
             } catch (SQLException e) {
                 conn.rollback();
@@ -87,7 +87,7 @@ public class SQLTickets {
         }
     }
 
-    public synchronized String add(TicketBuilder tb, String userName) throws SQLException {
+    public String add(TicketBuilder tb, String userName) throws SQLException {
         try (PreparedStatement coordinatesStmt = conn.prepareStatement("INSERT INTO coordinates (x, y, ticket_id) VALUES (?, ?, ?)");
              PreparedStatement addressStmt = conn.prepareStatement("INSERT INTO address (street, zip_code, venue_id) VALUES (?, ?, ?)");
              PreparedStatement venueStmt = conn.prepareStatement("INSERT INTO venue (name, capacity, type, ticket_id) VALUES (?, ?, ?, ?) RETURNING id");
@@ -149,21 +149,21 @@ public class SQLTickets {
         return "OK";
     }
 
-    public synchronized String addIfMax(TicketBuilder tb, String userName) throws SQLException {
+    public String addIfMax(TicketBuilder tb, String userName) throws SQLException {
         Ticket maxT = tv.maxTicket();
         if (maxT == null) return add(tb, userName);
         if (tb.compareTo(new TicketBuilder(maxT)) > 0) return add(tb, userName);
         return "Объект не добавлен";
     }
 
-    public synchronized String addIfMin(TicketBuilder tb, String userName) throws SQLException {
+    public String addIfMin(TicketBuilder tb, String userName) throws SQLException {
         Ticket minT = tv.minTicket();
         if (minT == null) return add(tb, userName);
         if (tb.compareTo(new TicketBuilder(minT)) < 0) return add(tb, userName);
         return "Объект не добавлен";
     }
 
-    public synchronized String update(TicketBuilder tb, long id, String userName) throws SQLException {
+    public String update(TicketBuilder tb, long id, String userName) throws SQLException {
         try (PreparedStatement ticketStatement = conn.prepareStatement("UPDATE ticket SET name = ?, price = ?, type = ? WHERE id = ?, user_name = ? RETURNING creation_date");
              PreparedStatement venueStatement = conn.prepareStatement("UPDATE venue SET name = ?, capacity = ?, type = ? WHERE ticket_id = ? RETURNING id");
              PreparedStatement addressStatement = conn.prepareStatement("UPDATE address SET street = ?, zip_code = ? WHERE venue_id = ?");
@@ -207,11 +207,11 @@ public class SQLTickets {
         return "OK";
     }
 
-    public synchronized String clear(String userName) throws SQLException {
+    public String clear(String userName) throws SQLException {
         try (PreparedStatement preparedStatement = conn.prepareStatement("DELETE FROM ticket WHERE user_name = ? RETURNING id")) {
             preparedStatement.setString(1, userName);
             ResultSet rs = preparedStatement.executeQuery();
-            while (rs.next()){
+            while (rs.next()) {
                 tv.removeById(rs.getLong("id"));
             }
             conn.commit();
@@ -219,6 +219,16 @@ public class SQLTickets {
             conn.rollback();
             return "Ошибка при удалении объектов./" + e.getMessage();
         }
+        return "OK";
+    }
+
+    public String clearAll(){
+        try(Statement stat = conn.createStatement()) {
+            stat.executeUpdate("TRUNCATE TABLE ticket RESTART IDENTITY CASCADE");
+        } catch (SQLException e) {
+            return e.getMessage();
+        }
+        tv.clear();
         return "OK";
     }
 
