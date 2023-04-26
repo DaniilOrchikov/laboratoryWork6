@@ -25,13 +25,13 @@ public class TicketVector {
     /**
      * Поле коллекции, в которой хранятся объекты класса {@link Ticket}
      */
-    private volatile Vector<Ticket> tv = new Vector<>();
+    private final Vector<Ticket> tv = new Vector<>();
     /**
      * Поле длинны коллекции tv
      *
      * @see TicketVector#tv
      */
-    private AtomicLong length = new AtomicLong(0);
+    private final AtomicLong length = new AtomicLong(0);
 
     public TicketVector() {
         creationDate = java.time.ZonedDateTime.now();

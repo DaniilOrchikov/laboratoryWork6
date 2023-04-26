@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.Stack;
+import java.util.logging.ConsoleHandler;
 
 import static java.lang.Thread.sleep;
 
@@ -158,7 +159,7 @@ public class Client {
                 cw.println("Введите пароль");
                 String password;
                 while (true) {
-                    password = nextInput();
+                    password = String.copyValueOf(System.console().readPassword());
                     if (password.equals("")) {
                         if (cw.getInputStatus() == 1) {
                             cw.printIgnoringPrintStatus("В файле " + fileNamesStack.peek() + " введены неверные данные для авторизации");
